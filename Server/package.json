@@ -1,0 +1,20 @@
+{
+  "name": "Hi-Fi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hapi/joi": "^15.1.1",
+    "client-sessions": "^0.8.0",
+    "express": "^4.17.1",
+    "mongodb": "^3.3.2",
+    "multer": "^1.4.2"
+  }
+}
