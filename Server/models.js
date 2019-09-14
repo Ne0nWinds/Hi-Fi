@@ -38,7 +38,19 @@ const albumSchema = joi.object({
     artID: joi.string().required(),
     songs: joi.array().required(),
 });
+
+const userSchema = joi.object({
+    email: joi
+        .string()
+        .email()
+        .required(),
+    password: joi
+        .string()
+        .min(4)
+        .required(),
+});
 module.exports = {
     songSchema,
-    albumSchema
-}
+    albumSchema,
+    userSchema,
+};

@@ -3,15 +3,22 @@ const express = require('express');
 const app = express();
 const api = express.Router();
 app.use('/api', api);
+const session = require('express-session');
+const bcrypt = require('bcrypt');
+api.use(
+    session({
+        secret: bcrypt.genSaltSync(12),
+        resave: true,
+        saveUninitialized: true,
+    }),
+);
 app.disable('x-powered-by');
-const session = require('client-sessions');
 const multer = require('multer');
 const mongodb = require('mongodb');
 const mongoClient = mongodb.MongoClient;
 const ObjectID = mongodb.ObjectID;
 const {Readable} = require('stream');
-
-const {songSchema, albumSchema} = require('./models.js');
+const {songSchema, albumSchema, userSchema} = require('./models.js');
 
 let db;
 mongoClient.connect(
@@ -23,6 +30,59 @@ mongoClient.connect(
     },
 );
 
+// Login/Reg
+api.post(
+    '/register',
+    multer({storage: multer.memoryStorage()}).none(),
+    async (request, response) => {
+        let errors = userSchema.validate(request.body).error;
+        if (errors != undefined) return response.status(400).json(errors);
+        let newUser = {
+            email: request.body.email.toLowerCase(),
+            password: request.body.password,
+            library: [],
+            playlists: [],
+            profilepic: '',
+        };
+        newUser.email = newUser.email.toLowerCase();
+
+        let emailDupe = await db
+            .collection('users')
+            .findOne({email: newUser.email});
+        if (emailDupe)
+            return response.status(400).json({msg: 'Duplicate Email'});
+
+        let salt = await bcrypt.genSalt(12);
+        let hashed_password = await bcrypt.hash(newUser.password, salt);
+        newUser.password = hashed_password;
+        await db.collection('users').insertOne(newUser);
+
+        return response.status(201).json({msg: 'Successful Login'});
+    },
+);
+
+api.post(
+    '/login',
+    multer({storage: multer.memoryStorage()}).none(),
+    async (request, response) => {
+        let errors = userSchema.validate(request.body).error;
+        if (errors != undefined) return response.status(400).json(errors);
+
+        let userInDb = await db
+            .collection('users')
+            .findOne({email: request.body.email});
+        if (!userInDb) return response.json({msg: 'Incorrect Email'});
+
+        if (await bcrypt.compare(request.body.password, userInDb.password)) {
+            request.session.user = userInDb._id;
+            response.json({msg: 'Login Successful'});
+        } else {
+            response.json({msg: 'Incorrect Password'});
+        }
+    },
+);
+
+// song upload/streaming/info
 api.post('/upload', (request, response) => {
     const storage = multer.memoryStorage();
     const upload = multer({storage: storage, limits: {files: 3, parts: 8}});
