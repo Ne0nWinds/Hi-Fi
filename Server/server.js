@@ -23,10 +23,7 @@ const {songSchema, albumSchema, userSchema} = require('./models.js');
 let db;
 mongoClient.connect(
     'mongodb://localhost/',
-    {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-    },
+    {useNewUrlParser: true, useUnifiedTopology: true},
     (err, client) => {
         if (err) console.warn("Mongo isn't running"), process.exit();
         db = client.db('HiFi');
@@ -36,9 +33,7 @@ mongoClient.connect(
 // Login/Reg
 api.post(
     '/register',
-    multer({
-        storage: multer.memoryStorage(),
-    }).none(),
+    multer({storage: multer.memoryStorage()}).none(),
     async (request, response) => {
         let errors = userSchema.validate(request.body).error;
         if (errors != undefined) return response.status(400).json(errors);
@@ -72,11 +67,8 @@ api.post(
 
 api.post(
     '/login',
-    multer({
-        storage: multer.memoryStorage(),
-    }).none(),
+    multer({storage: multer.memoryStorage()}).none(),
     async (request, response) => {
-        console.log(request.session.user);
         let errors = userSchema.validate(request.body).error;
         if (errors != undefined) return response.status(400).json(errors);
 
@@ -126,16 +118,12 @@ api.get('/playlist/new', async (request, response) => {
     }
 
     try {
-        await db.collection('users').findOneAndUpdate(
-            {
-                _id: new ObjectID(request.session.user),
-            },
-            {
-                $push: {
-                    playlists: newPlaylist._id,
-                },
-            },
-        );
+        await db
+            .collection('users')
+            .findOneAndUpdate(
+                {_id: new ObjectID(request.session.user)},
+                {$push: {playlists: newPlaylist._id}},
+            );
         response.status(201).json(newPlaylist);
     } catch (err) {
         response.status(500).json(err);
@@ -220,21 +208,13 @@ api.post('/upload', (request, response) => {
     const storage = multer.memoryStorage();
     const upload = multer({
         storage: storage,
-        limits: {
-            files: 3,
-            parts: 8,
-        },
+        limits: {files: 3, parts: 8},
     });
 
     upload.array('files', 3)(request, response, err => {
-        if (err)
-            return response.status(400).json({
-                msg: 'Invalid Upload',
-            });
+        if (err) return response.status(400).json({msg: 'Invalid Upload'});
         if (request.files.length != 3)
-            return response.status(400).json({
-                msg: 'Invalid Upload',
-            });
+            return response.status(400).json({msg: 'Invalid Upload'});
 
         let newSong = {
             title: request.body.title,
@@ -249,10 +229,7 @@ api.post('/upload', (request, response) => {
             albumID: request.body.albumID,
         };
         let schemaErrors = songSchema.validate(newSong).error;
-        if (schemaErrors)
-            return response.status(400).json({
-                msg: schemaErrors,
-            });
+        if (schemaErrors) return response.status(400).json({msg: schemaErrors});
 
         request.files.sort((a, b) => a.size > b.size); // sort least to greatest
 
@@ -268,9 +245,7 @@ api.post('/upload', (request, response) => {
             readable.push(request.files[i].buffer);
             readable.push(null);
 
-            let bucket = new mongodb.GridFSBucket(db, {
-                bucketName: 'songs',
-            });
+            let bucket = new mongodb.GridFSBucket(db, {bucketName: 'songs'});
 
             let uploadStream = bucket.openUploadStream(
                 request.body.name + '_' + dataRepresentation[i],
@@ -279,9 +254,7 @@ api.post('/upload', (request, response) => {
             readable.pipe(uploadStream);
 
             uploadStream.on('error', () => {
-                return response.status(500).json({
-                    msg: 'Error Uploading File',
-                });
+                return response.status(500).json({msg: 'Error Uploading File'});
             });
             uploadStream.on('finish', () => {
                 successCount++;
@@ -294,22 +267,13 @@ api.post('/upload', (request, response) => {
 
                     db.collection('songs').insertOne(newSong, (err, res) => {
                         if (err)
-                            return response.status(500).json({
-                                msg: 'Error adding song to database',
-                            });
+                            return response
+                                .status(500)
+                                .json({msg: 'Error adding song to database'});
                         db.collection('albums').findOneAndUpdate(
-                            {
-                                _id: new ObjectID(res.ops[0].albumID),
-                            },
-                            {
-                                $push: {
-                                    songs: res.ops[0]._id,
-                                },
-                            },
-                            (err, data) => {
-                                console.log(data);
-                                response.send(res.ops[0]);
-                            },
+                            {_id: new ObjectID(res.ops[0].albumID)},
+                            {$push: {songs: res.ops[0]._id}},
+                            (err, data) => response.send(res.ops[0]),
                         );
                     });
                 }
@@ -323,16 +287,12 @@ api.get('/stream/:id', (request, response) => {
     try {
         DataID = new ObjectID(request.params.id);
     } catch (err) {
-        return response.status(400).json({
-            msg: 'Invalid TrackId',
-        });
+        return response.status(400).json({msg: 'Invalid TrackId'});
     }
     //    response.set('content-type', 'audio/mp4');
     response.set('accept-ranges', 'bytes');
 
-    let bucket = new mongodb.GridFSBucket(db, {
-        bucketName: 'songs',
-    });
+    let bucket = new mongodb.GridFSBucket(db, {bucketName: 'songs'});
 
     let downloadStream = bucket.openDownloadStream(DataID);
 
@@ -348,50 +308,34 @@ api.get('/song/:id', async (request, response) => {
     try {
         SongID = new ObjectID(request.params.id);
     } catch (err) {
-        return response.status(400).json({
-            msg: 'Invalid Song Id',
-        });
+        return response.status(400).json({msg: 'Invalid Song Id'});
     }
 
-    response.json(
-        await db.collection('songs').findOne({
-            _id: SongID,
-        }),
-    );
+    response.json(await db.collection('songs').findOne({_id: SongID}));
 });
 
 api.post('/album/create', (request, response) => {
     const storage = multer.memoryStorage();
     const upload = multer({
         storage: storage,
-        limits: {
-            files: 1,
-            parts: 2,
-        },
+        limits: {files: 1, parts: 2},
     });
 
     upload.single('image', 1)(request, response, err => {
-        if (err)
-            return response.status(400).json({
-                msg: 'Invalid Upload',
-            });
+        if (err) return response.status(400).json({msg: 'Invalid Upload'});
 
         const readable = new Readable();
         readable.push(request.file.buffer);
         readable.push(null);
 
-        let bucket = new mongodb.GridFSBucket(db, {
-            bucketName: 'images',
-        });
+        let bucket = new mongodb.GridFSBucket(db, {bucketName: 'images'});
 
         let uploadStream = bucket.openUploadStream(request.body.name);
         let artID = uploadStream.id;
         readable.pipe(uploadStream);
 
         uploadStream.on('error', () => {
-            return response.status(500).json({
-                msg: 'Error Uploading File',
-            });
+            return response.status(500).json({msg: 'Error Uploading File'});
         });
 
         uploadStream.on('finish', () => {
@@ -403,9 +347,9 @@ api.post('/album/create', (request, response) => {
             console.log(albumSchema.validate(newAlbum));
             db.collection('albums').insertOne(newAlbum, (err, res) => {
                 if (err)
-                    return response.status(500).json({
-                        msg: 'Error adding album to database',
-                    });
+                    return response
+                        .status(500)
+                        .json({msg: 'Error adding album to database'});
                 return response.status(201).json(res.ops);
             });
         });
