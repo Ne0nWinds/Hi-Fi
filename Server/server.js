@@ -3,6 +3,11 @@ const express = require('express');
 const app = express();
 const api = express.Router();
 app.use('/api', api);
+app.use(
+    express.static(
+        __dirname.substring(0, __dirname.lastIndexOf('/')) + '/Client',
+    ),
+);
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 api.use(
@@ -132,9 +137,9 @@ api.get('/playlist/new', async (request, response) => {
 
 api.get('/playlist/view/:playlistID', async (request, response) => {
     try {
-        let playlist = await db.collection('playlists').findOne({
-            _id: new ObjectID(request.params.playlistID),
-        });
+        let playlist = await db
+            .collection('playlists')
+            .findOne({_id: new ObjectID(request.params.playlistID)});
         response.json(playlist);
     } catch (err) {
         response.status(400).json({msg: 'Invalid Playlist ID'});
