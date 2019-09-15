@@ -40,8 +40,11 @@ api.post(
     '/register',
     multer({storage: multer.memoryStorage()}).none(),
     async (request, response) => {
-        let errors = userSchema.validate(request.body).error;
-        if (errors != undefined) return response.status(400).json(errors);
+        try {
+            await userSchema.validate({...request.body});
+        } catch (err) {
+            return response.status(400).json(err);
+        }
         let newUser = {
             email: request.body.email.toLowerCase(),
             password: request.body.password,
@@ -62,7 +65,9 @@ api.post(
         let salt = await bcrypt.genSalt(12);
         let hashed_password = await bcrypt.hash(newUser.password, salt);
         newUser.password = hashed_password;
-        await db.collection('users').insertOne(newUser);
+
+        let userInDb = (await db.collection('users').insertOne(newUser)).ops[0];
+        request.session.user = userInDb._id;
 
         return response.status(201).json({
             msg: 'Successful Login',
@@ -74,8 +79,11 @@ api.post(
     '/login',
     multer({storage: multer.memoryStorage()}).none(),
     async (request, response) => {
-        let errors = userSchema.validate(request.body).error;
-        if (errors != undefined) return response.status(400).json(errors);
+        try {
+            await userSchema.validate({...request.body});
+        } catch (err) {
+            return response.status(400).json(err);
+        }
 
         let userInDb = await db.collection('users').findOne({
             email: request.body.email,
@@ -359,6 +367,13 @@ api.post('/album/create', (request, response) => {
             });
         });
     });
+});
+
+app.get('*', (request, response) => {
+    response.sendFile(
+        __dirname.substring(0, __dirname.lastIndexOf('/')) +
+            '/Client/index.html',
+    );
 });
 
 app.listen(8000);
