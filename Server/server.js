@@ -69,7 +69,7 @@ api.post(
         let userInDb = (await db.collection('users').insertOne(newUser)).ops[0];
         request.session.user = userInDb._id;
 
-        return response.status(201).json({msg: userInDb._id});
+        return response.status(201).json({userInDb});
     },
 );
 
@@ -86,14 +86,11 @@ api.post(
         let userInDb = await db.collection('users').findOne({
             email: request.body.email,
         });
-        if (!userInDb)
-            return response.json({
-                msg: 'Incorrect Email',
-            });
+        if (!userInDb) return response.json({msg: 'Incorrect Email'});
 
         if (await bcrypt.compare(request.body.password, userInDb.password)) {
             request.session.user = userInDb._id;
-            response.status(200).json({msg: userInDb._id});
+            response.status(200).json({userInDb});
         } else {
             response.status(400).json({msg: 'Incorrect Password'});
         }
@@ -112,9 +109,19 @@ api.post(
     },
 );
 
-api.get('/isLoggedIn', (request, response) =>
-    response.json({loggedIn: request.session.user != undefined}),
-);
+api.get('/loggedInUser', async (request, response) => {
+    try {
+        console.log(request.session.user);
+        let userInDb = await db
+            .collection('users')
+            .findOne({_id: new ObjectID(request.session.user)});
+        delete userInDb.password;
+        response.json(userInDb);
+    } catch (err) {
+        console.log(err);
+        response.json({msg: 'Not Logged In'});
+    }
+});
 
 api.get('/logout', (request, response) => {
     delete request.session.user;
