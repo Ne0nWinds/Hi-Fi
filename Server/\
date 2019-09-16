@@ -93,9 +93,11 @@ api.post(
 
         if (await bcrypt.compare(request.body.password, userInDb.password)) {
             request.session.user = userInDb._id;
-            response.status(200).json({msg: userInDb._id});
+            response.json({msg: userInDb._id});
         } else {
-            response.status(400).json({msg: 'Incorrect Password'});
+            response.json({
+                msg: 'Incorrect Password',
+            });
         }
     },
 );
@@ -108,12 +110,8 @@ api.post(
             .collection('users')
             .findOne({email: request.body.email});
 
-        response.json({emailInDb: userInDb ? true : false});
+        response.json({msg: userInDb ? 'Email Taken' : 'Email valid'});
     },
-);
-
-api.get('/isLoggedIn', (request, response) =>
-    response.json({loggedIn: request.session.user != undefined}),
 );
 
 api.get('/logout', (request, response) => {
