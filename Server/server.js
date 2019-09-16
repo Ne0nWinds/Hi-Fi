@@ -69,9 +69,7 @@ api.post(
         let userInDb = (await db.collection('users').insertOne(newUser)).ops[0];
         request.session.user = userInDb._id;
 
-        return response.status(201).json({
-            msg: 'Successful Login',
-        });
+        return response.status(201).json({msg: userInDb._id});
     },
 );
 
@@ -95,9 +93,7 @@ api.post(
 
         if (await bcrypt.compare(request.body.password, userInDb.password)) {
             request.session.user = userInDb._id;
-            response.json({
-                msg: 'Login Successful',
-            });
+            response.json({msg: userInDb._id});
         } else {
             response.json({
                 msg: 'Incorrect Password',
