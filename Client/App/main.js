@@ -1,10 +1,11 @@
-const {Link, Switch, Route, BrowserRouter} = window.ReactRouterDOM;
+const {Link, Switch, Route, BrowserRouter, Redirect} = window.ReactRouterDOM;
 
 class App extends React.Component {
     constructor() {
         super();
         this.state = {
             user: null,
+            serverResponded: false,
         };
     }
     setUser = user => {
@@ -13,30 +14,39 @@ class App extends React.Component {
     async componentDidMount() {
         let response = await axios.get('/api/loggedInUser');
         if (!response.data.msg) this.setState({user: response.data});
+
+        this.setState({serverResponded: true});
     }
     render() {
-        return (
-            <BrowserRouter>
-                {this.state.user === null ? (
-                    <Switch>
-                        <Route
-                            exact
-                            path="/register"
-                            component={() => (
-                                <Register setUser={this.setUser} />
-                            )}
-                        />
-                        <Route
-                            exact
-                            path="/login"
-                            component={() => <Login setUser={this.setUser} />}
-                        />
-                    </Switch>
-                ) : (
-                    ''
-                )}
-            </BrowserRouter>
-        );
+        if (this.state.serverResponded) {
+            return (
+                <BrowserRouter>
+                    {this.state.user === null ? (
+                        <Switch>
+                            <Route
+                                exact
+                                path="/login"
+                                component={() => (
+                                    <Login setUser={this.setUser} />
+                                )}
+                            />
+                            <Route
+                                path="*"
+                                component={() => <Redirect to="/login" />}
+                            />
+                        </Switch>
+                    ) : (
+                        ''
+                    )}
+                </BrowserRouter>
+            );
+        } else {
+            return (
+                <div id="appAnimContainer">
+                    <img id="loadingAnim" src="/img/logo.svg" />
+                </div>
+            );
+        }
     }
 }
 

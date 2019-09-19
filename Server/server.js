@@ -111,14 +111,12 @@ api.post(
 
 api.get('/loggedInUser', async (request, response) => {
     try {
-        console.log(request.session.user);
         let userInDb = await db
             .collection('users')
             .findOne({_id: new ObjectID(request.session.user)});
         delete userInDb.password;
         response.json(userInDb);
     } catch (err) {
-        console.log(err);
         response.json({msg: 'Not Logged In'});
     }
 });
@@ -227,7 +225,6 @@ api.post(
                 .findOneAndUpdate({_id: playlistID}, editedPlaylist);
             response.json({msg: 'Meta Data Changed Successfully'});
         } catch (err) {
-            console.log(err);
             response.status(500).json({msg: 'Meta Data Change Failed'});
         }
     },
@@ -374,7 +371,6 @@ api.post('/album/create', (request, response) => {
                 artID,
                 songs: [],
             };
-            console.log(albumSchema.validate(newAlbum));
             db.collection('albums').insertOne(newAlbum, (err, res) => {
                 if (err)
                     return response
