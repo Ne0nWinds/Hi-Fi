@@ -1,0 +1,8 @@
+@import url('https://fonts.googleapis.com/css?family=Noto+Sans+SC:400,500&display=swap');
+#root {
+    font-family: 'Noto Sans SC';
+    text-rendering: optimizeLegibility;
+}
+::selection {
+    background-color: transparent;
+}

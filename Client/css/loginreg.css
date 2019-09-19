@@ -1,0 +1,89 @@
+#loginregcontainer {
+    position: absolute;
+    min-width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-image: linear-gradient(
+        to top,
+        #191715,
+        rgba(25, 23, 21, 0.5) 75%,
+        transparent
+    );
+}
+#loginregcontainer::before {
+    z-index: -1;
+    content: '';
+    position: absolute;
+    min-width: 100vw;
+    min-height: 100vh;
+    background-color: #191715;
+    background-image: url('/img/cover.gif');
+    animation: fadein 1s;
+}
+@keyframes fadein {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+#loginreg {
+    position: relative;
+    top: -3vw;
+    width: 420px;
+    border-radius: 7px;
+    background-color: white;
+    box-shadow: 0px 0px 7px black;
+    text-align: center;
+    padding: 15px;
+}
+#loginreg > * {
+    margin: 15px 0;
+}
+#loginreg h1 {
+    font-weight: 500;
+    font-size: 36px;
+}
+#loginreg h2 {
+    color: #111;
+}
+#loginreg img {
+    width: 85%;
+    animation: fadein 1s;
+    min-height: 237px;
+}
+#loginreg span {
+    cursor: pointer;
+    text-decoration: underline;
+}
+#loginreg form > * {
+    margin: 7px 0;
+}
+.error-text {
+    color: #e00;
+}
+#loginreg form input {
+    width: 70%;
+    height: 22px;
+    border: 2px solid #777;
+    padding: 8px;
+    font-size: 16px;
+}
+#loginreg button {
+    background-color: #ffa30b;
+    color: white;
+    font-size: 20px;
+    font-weight: 500;
+    outline: 0;
+    border: 0;
+    width: 145px;
+    height: 45px;
+    border-radius: 33px;
+    text-transform: capitalize;
+}
+#loginreg button:hover {
+    cursor: pointer;
+}

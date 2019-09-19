@@ -6,7 +6,11 @@ class Login extends React.Component {
             emailError: '',
             passwordError: '',
         };
-        this.validations = {
+    }
+    validate = async e => {
+        e.preventDefault();
+        e.persist();
+        let validations = {
             email: [
                 {
                     msg: 'An email is required',
@@ -16,7 +20,10 @@ class Login extends React.Component {
                 {
                     msg: 'Invalid Email',
                     async: false,
-                    test: email => /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email),
+                    test: email =>
+                        /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(
+                            email,
+                        ),
                 },
                 {
                     msg: this.state.isNewAccount
@@ -45,21 +52,19 @@ class Login extends React.Component {
                     test: p => p.length > 0,
                 },
                 {
-                    msg: 'Invalid Password',
+                    msg: this.state.isNewAccount
+                        ? 'Password is too short'
+                        : 'Invalid Password',
                     async: false,
                     test: p => p.length >= 4,
                 },
             ],
         };
-    }
-    validate = async e => {
-        e.preventDefault();
-        e.persist();
 
         // check if it's a plausible login
         let validated = true;
-        for (let key in this.validations) {
-            for (let v of this.validations[key]) {
+        for (let key in validations) {
+            for (let v of validations[key]) {
                 let value = e.target.children[key].value;
                 let valid;
                 if (v.async) valid = await v.test(value);
@@ -98,36 +103,46 @@ class Login extends React.Component {
     };
     render() {
         return (
-            <div>
-                <h1>{this.state.isNewAccount ? 'Register' : 'Login'}</h1>
-                <form onSubmit={this.validate}>
-                    <input type="text" placeholder="Email" name="email" />
-                    <p>{this.state.emailError}</p>
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        name="password"
-                    />
-                    <p>{this.state.passwordError}</p>
-                    <button>
-                        {this.state.isNewAccount ? 'Register' : 'Login'}
-                    </button>
-                    {this.state.isNewAccount ? (
-                        <p>
-                            Already have an account?{' '}
-                            <span onClick={() => this.setState({isNewAccount: false})}>
-                                Login here
-                            </span>
-                        </p>
-                    ) : (
-                        <p>
-                            Don't have an account?{' '}
-                            <span onClick={() => this.setState({isNewAccount: true})}>
-                                Register here
-                            </span>
-                        </p>
-                    )}
-                </form>
+            <div id="loginregcontainer">
+                <div id="loginreg">
+                    <h1>Hi-Fi Music</h1>
+                    <h2>Stream unlimited music</h2>
+                    <img src="/img/login.svg" />
+                    <form onSubmit={this.validate}>
+                        <input type="text" placeholder="Email" name="email" />
+                        <p class="error-text">{this.state.emailError}</p>
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            name="password"
+                        />
+                        <p class="error-text">{this.state.passwordError}</p>
+                        <button>
+                            {this.state.isNewAccount ? 'Register' : 'Login'}
+                        </button>
+                        {this.state.isNewAccount ? (
+                            <p>
+                                Already have an account?{' '}
+                                <span
+                                    onClick={() =>
+                                        this.setState({isNewAccount: false})
+                                    }>
+                                    Login here
+                                </span>
+                            </p>
+                        ) : (
+                            <p>
+                                Don't have an account?{' '}
+                                <span
+                                    onClick={() =>
+                                        this.setState({isNewAccount: true})
+                                    }>
+                                    Register here
+                                </span>
+                            </p>
+                        )}
+                    </form>
+                </div>
             </div>
         );
     }
