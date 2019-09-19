@@ -2,185 +2,131 @@ class Login extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            validations: {
-                email: '',
-                password: '',
-            },
+            isNewAccount: true,
+            emailError: '',
+            passwordError: '',
+        };
+        this.validations = {
+            email: [
+                {
+                    msg: 'An email is required',
+                    async: false,
+                    test: email => email != '',
+                },
+                {
+                    msg: 'Invalid Email',
+                    async: false,
+                    test: email => /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(email),
+                },
+                {
+                    msg: this.state.isNewAccount
+                        ? 'This email is taken'
+                        : "There's not an account with this email",
+                    async: true,
+                    test: email =>
+                        new Promise(async (resolve, reject) => {
+                            let body = new FormData();
+                            body.append('email', email);
+                            let response = await axios.post(
+                                '/api/emailExists',
+                                body,
+                            );
+                            resolve(
+                                response.data.emailInDb ^
+                                    this.state.isNewAccount,
+                            );
+                        }),
+                },
+            ],
+            password: [
+                {
+                    msg: 'A password is required',
+                    async: false,
+                    test: p => p.length > 0,
+                },
+                {
+                    msg: 'Invalid Password',
+                    async: false,
+                    test: p => p.length >= 4,
+                },
+            ],
         };
     }
-    login = async e => {
+    validate = async e => {
         e.preventDefault();
-        try {
-            let body = new FormData();
-            body.append('email', e.target.children.email.value);
-            body.append('password', e.target.children.password.value);
-            let response = await axios.post('/api/login', body);
-            if (response.status == 200) this.props.setUser(response.data);
-        } catch (err) {
-            let validations = {...this.state.validations};
-            validations.password = 'Incorrect Password';
-            this.setState({validations});
+        e.persist();
+
+        // check if it's a plausible login
+        let validated = true;
+        for (let key in this.validations) {
+            for (let v of this.validations[key]) {
+                let value = e.target.children[key].value;
+                let valid;
+                if (v.async) valid = await v.test(value);
+                else valid = v.test(value);
+
+                let state = {};
+                if (!valid) {
+                    state[key + 'Error'] = v.msg;
+                    this.setState(state);
+                    validated = false;
+                    break;
+                } else {
+                    state[key + 'Error'] = '';
+                    this.setState(state);
+                }
+            }
         }
-    };
-    validateEmail = async e => {
-        let emailRegex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-        let validations = {...this.state.validations};
-        if (!emailRegex.test(e.target.value)) {
-            validations.email = 'Invalid Email';
-            this.setState({validations});
-            return;
-        } else {
-            validations.email = '';
-            this.setState({validations});
-        }
-        let body = new FormData();
-        body.append('email', e.target.value);
-        let response = await axios.post('/api/emailExists', body);
-        if (!response.data.emailInDb) {
-            validations.email = 'Invalid Email';
-            this.setState({validations});
-            return;
-        } else {
-            validations.email = '';
-            this.setState({validations});
-        }
-    };
-    validatePassword = e => {
-        let validations = {...this.state.validations};
-        if (e.target.value.length < 4) {
-            validations.password = 'Incorrect Password';
-            this.setState({validations});
-        } else {
-            validations.password = '';
-            this.setState({validations});
+
+        // attempt to login/register
+        if (validated) {
+            try {
+                let body = new FormData();
+                body.append('email', e.target.children.email.value);
+                body.append('password', e.target.children.password.value);
+                let response = await axios.post(
+                    this.state.isNewAccount ? '/api/register' : '/api/login',
+                    body,
+                );
+                if (response.status == 200 || response.status == 201)
+                    this.props.setUser(response.data);
+            } catch (err) {
+                if (this.state.isNewAccount)
+                    this.setState({passwordError: 'Incorrect Password'});
+            }
         }
     };
     render() {
         return (
             <div>
-                <h1>Log In</h1>
-                <form onSubmit={this.login}>
-                    <input
-                        type="text"
-                        placeholder="Email"
-                        name="email"
-                        onBlur={this.validateEmail}
-                    />
-                    {this.state.validations.email ? (
-                        <p>{this.state.validations.email}</p>
-                    ) : (
-                        ''
-                    )}
+                <h1>{this.state.isNewAccount ? 'Register' : 'Login'}</h1>
+                <form onSubmit={this.validate}>
+                    <input type="text" placeholder="Email" name="email" />
+                    <p>{this.state.emailError}</p>
                     <input
                         type="password"
                         placeholder="Password"
                         name="password"
-                        onBlur={this.validatePassword}
                     />
-                    {this.state.validations.password ? (
-                        <p>{this.state.validations.password}</p>
+                    <p>{this.state.passwordError}</p>
+                    <button>
+                        {this.state.isNewAccount ? 'Register' : 'Login'}
+                    </button>
+                    {this.state.isNewAccount ? (
+                        <p>
+                            Already have an account?{' '}
+                            <span onClick={() => this.setState({isNewAccount: false})}>
+                                Login here
+                            </span>
+                        </p>
                     ) : (
-                        ''
+                        <p>
+                            Don't have an account?{' '}
+                            <span onClick={() => this.setState({isNewAccount: true})}>
+                                Register here
+                            </span>
+                        </p>
                     )}
-                    <button>Log In</button>
-                    <p>
-                        Don't have an account?
-                        <Link to="/register">Register here</Link>
-                    </p>
-                </form>
-            </div>
-        );
-    }
-}
-class Register extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-            validations: {
-                email: '',
-                password: '',
-            },
-        };
-    }
-    register = async e => {
-        e.preventDefault();
-        if (this.state.validations.email || this.state.validations.password)
-            return;
-        try {
-            let body = new FormData();
-            body.append('email', e.target.children.email.value);
-            body.append('password', e.target.children.password.value);
-            let response = await axios.post('/api/register', body);
-            if (response.status == 201) this.props.setUser(response.data);
-        } catch (err) {
-            console.log(err);
-        }
-    };
-    validateEmail = async e => {
-        let emailRegex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-        let validations = {...this.state.validations};
-        if (!emailRegex.test(e.target.value)) {
-            validations.email = 'Invalid Email';
-            this.setState({validations});
-            return;
-        } else {
-            validations.email = '';
-            this.setState({validations});
-        }
-        let body = new FormData();
-        body.append('email', e.target.value);
-        let response = await axios.post('/api/emailExists', body);
-        if (response.data.emailInDb) {
-            validations.email = 'Email already in use';
-            this.setState({validations});
-            return;
-        } else {
-            validations.email = '';
-            this.setState({validations});
-        }
-    };
-    validatePassword = e => {
-        let validations = {...this.state.validations};
-        if (e.target.value.length < 4) {
-            validations.password = 'Password must have at least 4 characters';
-            this.setState({validations});
-        } else {
-            validations.password = '';
-            this.setState({validations});
-        }
-    };
-    render() {
-        return (
-            <div>
-                <h1>Sign Up</h1>
-                <form onSubmit={this.register}>
-                    <input
-                        type="text"
-                        placeholder="Email"
-                        name="email"
-                        onBlur={this.validateEmail}
-                    />
-                    {this.state.validations.email ? (
-                        <p>{this.state.validations.email}</p>
-                    ) : (
-                        ''
-                    )}
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        name="password"
-                        onBlur={this.validatePassword}
-                    />
-                    {this.state.validations.password ? (
-                        <p>{this.state.validations.password}</p>
-                    ) : (
-                        ''
-                    )}
-                    <button>Create Account</button>
-                    <p>
-                        Already have an account?
-                        <Link to="/login">Log in here</Link>
-                    </p>
                 </form>
             </div>
         );
