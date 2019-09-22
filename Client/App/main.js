@@ -37,8 +37,42 @@ const Home = props => (
         ))}
     </main>
 );
-const Library = () => <div id="library"></div>;
-const SongSet = () => <div id="songset"></div>;
+const Library = () => <main id="library"></main>;
+
+// album or playlist
+const SongSet = props => (
+    <main id="songset">
+        <div>
+            <img src={'/api/image/view/' + props.set.artID} />
+            <div>
+                <h1>{props.set.title}</h1>
+                <p>
+                    {props.set.description != undefined
+                        ? props.set.description
+                        : 'No description'}
+                </p>
+                <button>Play</button>
+                <button>Shuffle</button>
+            </div>
+        </div>
+        <div>
+            <div class="song-row-header">
+                <p class="song-col song-col-num">&#35;</p>
+                <p class="song-col song-col-title">Title</p>
+                <p class="song-col song-col-album">Artist</p>
+                <p class="song-col song-col-time">Time</p>
+            </div>
+            {props.set.songs.map(s => (
+                <div class="song-row">
+                    <p class="song-col song-col-num">{s.trackNumber}</p>
+                    <p class="song-col song-col-title">{s.title}</p>
+                    <p class="song-col song-col-artist">{s.artist}</p>
+                    <p class="song-col song-col-tim">{s.duration}</p>
+                </div>
+            ))}
+        </div>
+    </main>
+);
 
 class WebPlayer extends React.Component {
     constructor(props) {
@@ -47,6 +81,7 @@ class WebPlayer extends React.Component {
             email: this.props.user.email,
             playlists: [],
             homeAlbums: [],
+            currentSongSet: {},
             serverResponded: false,
         };
     }
@@ -56,6 +91,26 @@ class WebPlayer extends React.Component {
             return new Promise(async (resolve, reject) => {
                 let response = await axios.get('/api/albums/get');
                 this.setState({homeAlbums: response.data});
+                resolve();
+            });
+        else if (url[0] == 'album')
+            return new Promise(async (resolve, reject) => {
+                let response, songset;
+
+                response = await axios.get('/api/album/get/' + url[1]);
+                songset = {songs: [], ...response.data};
+
+                let songs = response.data.songs.join(',');
+                let body = new FormData();
+                body.append('songs', songs);
+
+                songset.songs = (await axios.post(
+                    '/api/songs/view',
+                    body,
+                )).data.sort(
+                    (a, b) => Number(a.trackNumber) > Number(b.trackNumber),
+                );
+                this.setState({currentSongSet: songset});
                 resolve();
             });
     };
@@ -68,13 +123,13 @@ class WebPlayer extends React.Component {
         response = await axios.post('/api/playlist/view', body);
         this.setState({playlists: response.data});
 
+        // main queries
         await this.handleAPICalls();
         this.setState({serverResponded: true});
     }
 
-    getSnapshotBeforeUpdate(prevProps, prevState) {
-        if (prevProps.url == this.props.url) return;
-        this.handleAPICalls();
+    async getSnapshotBeforeUpdate(prevProps, prevState) {
+        if (prevProps.url != this.props.url) await this.handleAPICalls();
     }
     render() {
         if (this.state.serverResponded) {
@@ -96,6 +151,12 @@ class WebPlayer extends React.Component {
                             exact
                             path="/library"
                             component={() => <Library />}
+                        />
+                        <Route
+                            path="/album/:id"
+                            component={() => (
+                                <SongSet set={this.state.currentSongSet} />
+                            )}
                         />
                     </Switch>
                     <Controls />

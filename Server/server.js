@@ -130,9 +130,9 @@ api.get('/logout', (request, response) => {
 // creating/managing playlists
 api.get('/playlist/new', async (request, response) => {
     let data = {
-        name: 'New Playlist',
+        title: 'New Playlist',
         creatorID: request.session.user,
-        picture: '',
+        artID: '',
         description: '',
         songs: [],
     };
@@ -367,6 +367,25 @@ api.get('/song/:id', async (request, response) => {
     response.json(await db.collection('songs').findOne({_id: SongID}));
 });
 
+api.post(
+    '/songs/view',
+    multer({storage: multer.memoryStorage()}).none(),
+    async (request, response) => {
+        try {
+            let playlist = request.body.songs.split(','); // works for playlists and albums
+            for (let i in playlist) playlist[i] = new ObjectID(playlist[i]);
+
+            let data = await db
+                .collection('songs')
+                .find({_id: {$in: playlist}})
+                .toArray();
+            response.json(data);
+        } catch (err) {
+            response.status(400).json({msg: 'Invalid Playlist ID(s)'});
+        }
+    },
+);
+
 // albums
 api.post('/album/create', (request, response) => {
     const storage = multer.memoryStorage();
@@ -410,12 +429,22 @@ api.post('/album/create', (request, response) => {
     });
 });
 
+api.get('/album/get/:id', async (request, response) => {
+    let id;
+    try {
+        id = new ObjectID(request.params.id);
+    } catch (err) {
+        response.status(400).json({msg: 'Invalid Track ID'});
+    }
+    response.json(await db.collection('albums').findOne({_id: id}));
+});
+
 api.get('/albums/get', async (request, response) => {
     response.json(
-        await db
+        (await db
             .collection('albums')
             .find({})
-            .toArray(),
+            .toArray()).sort((a, b) => a._id > b._id),
     );
 });
 
