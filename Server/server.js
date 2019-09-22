@@ -23,7 +23,7 @@ const mongodb = require('mongodb');
 const mongoClient = mongodb.MongoClient;
 const ObjectID = mongodb.ObjectID;
 const {Readable} = require('stream');
-const {songSchema, albumSchema, userSchema} = require('./models.js');
+const {songSchema, userSchema} = require('./models.js');
 
 let db;
 mongoClient.connect(
@@ -329,12 +329,17 @@ api.post(
     },
 );
 
-api.get('/stream/:id', (request, response) => {
+api.get('/stream/:id', async (request, response) => {
     let DataID;
     try {
         DataID = new ObjectID(request.params.id);
+        let songInDb = await db
+            .collection('songs.files')
+            .findOne({_id: DataID});
+        if (songInDb == null) throw 'Not found';
     } catch (err) {
-        return response.status(400).json({msg: 'Invalid TrackId'});
+        response.status(404).end();
+        return;
     }
     response.set('content-type', 'video/mp4');
     response.set('accept-ranges', 'bytes');
@@ -362,6 +367,7 @@ api.get('/song/:id', async (request, response) => {
     response.json(await db.collection('songs').findOne({_id: SongID}));
 });
 
+// albums
 api.post('/album/create', (request, response) => {
     const storage = multer.memoryStorage();
     const upload = multer({
@@ -370,7 +376,8 @@ api.post('/album/create', (request, response) => {
     });
 
     upload.single('image', 1)(request, response, err => {
-        if (err) return response.status(400).json({msg: 'Invalid Upload'});
+        if (err || !request.body.title)
+            return response.status(400).json({msg: 'Invalid Upload'});
 
         const readable = new Readable();
         readable.push(request.file.buffer);
@@ -378,7 +385,7 @@ api.post('/album/create', (request, response) => {
 
         let bucket = new mongodb.GridFSBucket(db, {bucketName: 'images'});
 
-        let uploadStream = bucket.openUploadStream(request.body.name);
+        let uploadStream = bucket.openUploadStream(request.body.title);
         let artID = uploadStream.id;
         readable.pipe(uploadStream);
 
@@ -388,7 +395,7 @@ api.post('/album/create', (request, response) => {
 
         uploadStream.on('finish', () => {
             let newAlbum = {
-                title: request.body.name,
+                title: request.body.title,
                 artID,
                 songs: [],
             };
@@ -401,6 +408,41 @@ api.post('/album/create', (request, response) => {
             });
         });
     });
+});
+
+api.get('/albums/get', async (request, response) => {
+    response.json(
+        await db
+            .collection('albums')
+            .find({})
+            .toArray(),
+    );
+});
+
+// images
+api.get('/image/view/:id', async (request, response) => {
+    let DataID;
+    try {
+        DataID = new ObjectID(request.params.id);
+        let imgInDb = await db
+            .collection('images.files')
+            .findOne({_id: DataID});
+        if (imgInDb == null) throw 'Not found';
+    } catch (err) {
+        response.status(404).end();
+        return;
+    }
+    response.set('accept-ranges', 'bytes');
+
+    let bucket = new mongodb.GridFSBucket(db, {bucketName: 'images'});
+
+    let downloadStream = bucket.openDownloadStream(DataID);
+
+    downloadStream.on('err', () => response.status(404).end());
+
+    downloadStream.on('data', chunk => response.write(chunk));
+
+    downloadStream.on('end', () => response.end());
 });
 
 app.get('*', (request, response) => {

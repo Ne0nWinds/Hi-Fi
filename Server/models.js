@@ -1,4 +1,5 @@
 const joi = require('@hapi/joi');
+
 const songSchema = joi.object({
     title: joi
         .string()
@@ -32,17 +33,6 @@ const songSchema = joi.object({
         .required(),
 });
 
-const albumSchema = joi.object({
-    title: joi
-        .string()
-        .min(2)
-        .max(32)
-        .regex(/w+/)
-        .required(),
-    artID: joi.string().required(),
-    songs: joi.array().required(),
-});
-
 const userSchema = joi.object({
     email: joi
         .string()
@@ -55,6 +45,5 @@ const userSchema = joi.object({
 });
 module.exports = {
     songSchema,
-    albumSchema,
     userSchema,
 };

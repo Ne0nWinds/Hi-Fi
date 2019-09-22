@@ -1,38 +1,46 @@
 const {Link, Switch, Route, BrowserRouter, Redirect} = window.ReactRouterDOM;
 
-class Sidebar extends React.Component {
-    constructor(props) {
-        super(props);
-    }
-    render() {
-        return (
-            <div id="sidebar">
-                <div>
-                    <img src="" />
-                    <p>{this.props.email}</p>
-                </div>
-                <hr />
-                <div>
-                    <ul>
-                        <li>Home</li>
-                        <li>Library</li>
-                    </ul>
-                </div>
-                <hr />
-                <div>
-                    <p>+ New Playlist</p>
-                    <ul>
-                        {this.props.playlists.map(p => (
-                            <li>{p.name}</li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-        );
-    }
-}
-const Main = () => <div />;
+const Sidebar = props => (
+    <div id="sidebar">
+        <div>
+            <img src="" />
+            <p>{props.email}</p>
+        </div>
+        <hr />
+        <div>
+            <ul>
+                <li>
+                    <Link to="/">Home</Link>
+                </li>
+                <li>
+                    <Link to="/library">Library</Link>
+                </li>
+            </ul>
+        </div>
+        <hr />
+        <div>
+            <p>+ New Playlist</p>
+            <ul>
+                {props.playlists.map(p => (
+                    <li>
+                        <Link to={'/playlist/' + p._id}>{p.name}</Link>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    </div>
+);
+
 const Controls = () => <div />;
+const Home = props => (
+    <div id="home">
+        {props.albums.map(a => {
+            return <img src={'/api/image/view/' + a.artID} />;
+        })}
+    </div>
+);
+const Library = () => <div id="library"></div>;
+const SongSet = () => <div id="songset"></div>;
 
 class WebPlayer extends React.Component {
     constructor(props) {
@@ -40,17 +48,28 @@ class WebPlayer extends React.Component {
         this.state = {
             email: this.props.user.email,
             playlists: [],
+            homeAlbums: [],
             serverResponded: false,
         };
     }
+    handleAPICalls = async () => {};
     async componentDidMount() {
-        let body = new FormData();
+        // sidebar queries
+        let response, body;
+        body = new FormData();
         body.append('playlists', this.props.user.playlists.join(','));
-        let response = await axios.post('/api/playlist/view', body);
+        response = await axios.post('/api/playlist/view', body);
         this.setState({playlists: response.data});
 
+        let url = this.props.url.substring(1).split('/');
+        if (url[0] == '') {
+            response = await axios.get('/api/albums/get');
+            console.log(response.data);
+            this.setState({homeAlbums: response.data});
+        }
         this.setState({serverResponded: true});
     }
+    getSnapshotBeforeUpdate(prevProps, prevState) {}
     render() {
         if (this.state.serverResponded) {
             return (
@@ -59,7 +78,20 @@ class WebPlayer extends React.Component {
                         email={this.state.email}
                         playlists={this.state.playlists}
                     />
-                    <Main />
+                    <Switch>
+                        <Route
+                            exact
+                            path="/"
+                            component={() => (
+                                <Home albums={this.state.homeAlbums} />
+                            )}
+                        />
+                        <Route
+                            exact
+                            path="/library"
+                            component={() => <Library />}
+                        />
+                    </Switch>
                     <Controls />
                 </div>
             );
@@ -115,10 +147,12 @@ class App extends React.Component {
                                 component={() => <Redirect to="/" />}
                             />
                             <Route
-                                exact
-                                path="/"
-                                component={() => (
-                                    <WebPlayer user={this.state.user} />
+                                path="*"
+                                component={props => (
+                                    <WebPlayer
+                                        url={props.match.url}
+                                        user={this.state.user}
+                                    />
                                 )}
                             />
                         </Switch>
