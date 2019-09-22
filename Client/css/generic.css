@@ -23,3 +23,17 @@
         opacity: 0;
     }
 }
+#appAnimContainer {
+    background-color: #DDD;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+}
+#loadingAnim {
+    opacity: 0.6;
+    height: 64px;
+    width: 64px;
+}
+

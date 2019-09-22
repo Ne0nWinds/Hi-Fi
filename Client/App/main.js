@@ -1,43 +1,41 @@
 const {Link, Switch, Route, BrowserRouter, Redirect} = window.ReactRouterDOM;
 
 const Sidebar = props => (
-    <div id="sidebar">
-        <div>
-            <img src="" />
-            <p>{props.email}</p>
-        </div>
-        <hr />
-        <div>
-            <ul>
+    <nav id="sidebar">
+        <ul>
+            <li id="accountControl">
+                <img src="/img/user_logo.jpg" />
+                <p>{props.email.replace(/@.*/, '')}</p>
+            </li>
+        </ul>
+        <ul>
+            <li>
+                <Link to="/">Home</Link>
+            </li>
+            <li>
+                <Link to="/library">Library</Link>
+            </li>
+        </ul>
+        <ul>
+            <li>New Playlist</li>
+            {props.playlists.map(p => (
                 <li>
-                    <Link to="/">Home</Link>
+                    <Link to={'/playlist/' + p._id}>{p.name}</Link>
                 </li>
-                <li>
-                    <Link to="/library">Library</Link>
-                </li>
-            </ul>
-        </div>
-        <hr />
-        <div>
-            <p>+ New Playlist</p>
-            <ul>
-                {props.playlists.map(p => (
-                    <li>
-                        <Link to={'/playlist/' + p._id}>{p.name}</Link>
-                    </li>
-                ))}
-            </ul>
-        </div>
-    </div>
+            ))}
+        </ul>
+    </nav>
 );
 
 const Controls = () => <div />;
 const Home = props => (
-    <div id="home">
-        {props.albums.map(a => {
-            return <img src={'/api/image/view/' + a.artID} />;
-        })}
-    </div>
+    <main id="home">
+        {props.albums.map(a => (
+            <Link to={'/album/' + a._id}>
+                <img src={'/api/image/view/' + a.artID} />
+            </Link>
+        ))}
+    </main>
 );
 const Library = () => <div id="library"></div>;
 const SongSet = () => <div id="songset"></div>;
@@ -52,7 +50,16 @@ class WebPlayer extends React.Component {
             serverResponded: false,
         };
     }
-    handleAPICalls = async () => {};
+    handleAPICalls = async () => {
+        let url = this.props.url.substring(1).split('/');
+        if (this.state.homeAlbums.length == 0 && url[0] == '')
+            return new Promise(async (resolve, reject) => {
+                let response = await axios.get('/api/albums/get');
+                this.setState({homeAlbums: response.data});
+                resolve();
+            });
+    };
+
     async componentDidMount() {
         // sidebar queries
         let response, body;
@@ -61,19 +68,18 @@ class WebPlayer extends React.Component {
         response = await axios.post('/api/playlist/view', body);
         this.setState({playlists: response.data});
 
-        let url = this.props.url.substring(1).split('/');
-        if (url[0] == '') {
-            response = await axios.get('/api/albums/get');
-            console.log(response.data);
-            this.setState({homeAlbums: response.data});
-        }
+        await this.handleAPICalls();
         this.setState({serverResponded: true});
     }
-    getSnapshotBeforeUpdate(prevProps, prevState) {}
+
+    getSnapshotBeforeUpdate(prevProps, prevState) {
+        if (prevProps.url == this.props.url) return;
+        this.handleAPICalls();
+    }
     render() {
         if (this.state.serverResponded) {
             return (
-                <div id="interface">
+                <div id="webPlayer">
                     <Sidebar
                         email={this.state.email}
                         playlists={this.state.playlists}

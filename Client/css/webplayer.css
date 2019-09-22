@@ -1,0 +1,40 @@
+#webPlayer {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    max-width: 100vw;
+    max-height: 100vh;
+}
+img {
+    background-color: #333;
+}
+#loadingAnim {
+    background-color: transparent;
+}
+#sidebar {
+    box-sizing: border-box;
+    padding: 15px 15px;
+}
+#sidebar ul {
+    margin-bottom: 25px;
+}
+#sidebar ul li {
+    width: 100%;
+    height: 45px;
+    display: flex;
+    align-items: center;
+}
+#sidebar #accountControl {
+    display: flex;
+}
+#sidebar #accountControl img {
+    border-radius: 50%;
+    width: 45px;
+    height: 45px;
+    object-fit: cover;
+    margin-right: 7px;
+}
+
+#home img {
+    height: 250px;
+    width: 250px;
+}
