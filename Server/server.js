@@ -58,9 +58,7 @@ api.post(
             email: newUser.email,
         });
         if (emailDupe)
-            return response.status(400).json({
-                msg: 'Duplicate Email',
-            });
+            return response.status(400).json({msg: 'Duplicate Email'});
 
         let salt = await bcrypt.genSalt(12);
         let hashed_password = await bcrypt.hash(newUser.password, salt);
@@ -90,7 +88,8 @@ api.post(
 
         if (await bcrypt.compare(request.body.password, userInDb.password)) {
             request.session.user = userInDb._id;
-            response.status(200).json({userInDb});
+            delete userInDb.password;
+            response.status(200).json(userInDb);
         } else {
             response.status(400).json({msg: 'Incorrect Password'});
         }
@@ -170,6 +169,25 @@ api.get('/playlist/view/:playlistID', async (request, response) => {
 });
 
 api.post(
+    '/playlist/view/',
+    multer({storage: multer.memoryStorage()}).none(),
+    async (request, response) => {
+        try {
+            let playlists = request.body.playlists.split(',');
+            for (let i in playlists) playlists[i] = new ObjectID(playlists[i]);
+
+            let data = await db
+                .collection('playlists')
+                .find({_id: {$in: playlists}})
+                .toArray();
+            response.json(data);
+        } catch (err) {
+            response.status(400).json({msg: 'Invalid Playlist ID(s)'});
+        }
+    },
+);
+
+api.post(
     '/playlist/addsong/',
     multer({storage: multer.memoryStorage()}).none(),
     async (request, response) => {
@@ -231,15 +249,13 @@ api.post(
 );
 
 // song upload/streaming/info
-api.post('/upload', (request, response) => {
-    const storage = multer.memoryStorage();
-    const upload = multer({
-        storage: storage,
-        limits: {files: 3, parts: 8},
-    });
-
-    upload.array('files', 3)(request, response, err => {
-        if (err) return response.status(400).json({msg: 'Invalid Upload'});
+api.post(
+    '/upload',
+    multer({
+        storage: multer.memoryStorage(),
+        limits: {files: 3, parts: 9},
+    }).array('files', 3),
+    async (request, response) => {
         if (request.files.length != 3)
             return response.status(400).json({msg: 'Invalid Upload'});
 
@@ -254,9 +270,13 @@ api.post('/upload', (request, response) => {
                 '192k': '0',
             },
             albumID: request.body.albumID,
+            indexRange: request.body.indexRange,
         };
-        let schemaErrors = songSchema.validate(newSong).error;
-        if (schemaErrors) return response.status(400).json({msg: schemaErrors});
+        try {
+            await songSchema.validate(newSong);
+        } catch (err) {
+            return response.status(400).json(err);
+        }
 
         request.files.sort((a, b) => a.size > b.size); // sort least to greatest
 
@@ -306,8 +326,8 @@ api.post('/upload', (request, response) => {
                 }
             });
         }
-    });
-});
+    },
+);
 
 api.get('/stream/:id', (request, response) => {
     let DataID;
@@ -316,16 +336,17 @@ api.get('/stream/:id', (request, response) => {
     } catch (err) {
         return response.status(400).json({msg: 'Invalid TrackId'});
     }
-    //    response.set('content-type', 'audio/mp4');
+    response.set('content-type', 'video/mp4');
     response.set('accept-ranges', 'bytes');
 
     let bucket = new mongodb.GridFSBucket(db, {bucketName: 'songs'});
 
-    let downloadStream = bucket.openDownloadStream(DataID);
+    let downloadStream;
+    downloadStream = bucket.openDownloadStream(DataID);
 
     downloadStream.on('data', chunk => response.write(chunk));
 
-    downloadStream.on('err', () => reponse.sendStatus(404));
+    downloadStream.on('err', () => response.status(404));
 
     downloadStream.on('end', () => response.end());
 });

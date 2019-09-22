@@ -96,6 +96,7 @@ class Login extends React.Component {
                 if (response.status == 200 || response.status == 201)
                     this.props.setUser(response.data);
             } catch (err) {
+                console.log(err);
                 if (this.state.isNewAccount)
                     this.setState({passwordError: 'Incorrect Password'});
             }

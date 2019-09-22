@@ -26,6 +26,10 @@ const songSchema = joi.object({
         .number()
         .min(1)
         .required(),
+    indexRange: joi
+        .number()
+        .min(822)
+        .required(),
 });
 
 const albumSchema = joi.object({
