@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css?family=Noto+Sans+SC:400,500&display=swap');
 #root {
-    font-family: 'Noto Sans SC', 'Helvetica', sans-serif;
+    font-family: 'Noto Sans SC', 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
     text-rendering: optimizeLegibility;
 }
 ::selection {
@@ -24,7 +24,7 @@
     }
 }
 #appAnimContainer {
-    background-color: #DDD;
+    background-color: #ddd;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -36,4 +36,3 @@
     height: 64px;
     width: 64px;
 }
-

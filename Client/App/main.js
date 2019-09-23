@@ -9,19 +9,19 @@ const Sidebar = props => (
             </li>
         </ul>
         <ul>
-            <li>
-                <Link to="/">Home</Link>
-            </li>
-            <li>
-                <Link to="/library">Library</Link>
-            </li>
+            <Link to="/">
+                <li>Home</li>
+            </Link>
+            <Link to="/library">
+                <li>Library</li>
+            </Link>
         </ul>
         <ul>
             <li>New Playlist</li>
             {props.playlists.map(p => (
-                <li>
-                    <Link to={'/playlist/' + p._id}>{p.name}</Link>
-                </li>
+                <Link to={'/playlist/' + p._id}>
+                    <li to={'/playlist/' + p._id}>{p.name}</li>
+                </Link>
             ))}
         </ul>
     </nav>
@@ -40,39 +40,63 @@ const Home = props => (
 const Library = () => <main id="library"></main>;
 
 // album or playlist
-const SongSet = props => (
-    <main id="songset">
-        <div>
-            <img src={'/api/image/view/' + props.set.artID} />
-            <div>
-                <h1>{props.set.title}</h1>
-                <p>
-                    {props.set.description != undefined
-                        ? props.set.description
-                        : 'No description'}
-                </p>
-                <button>Play</button>
-                <button>Shuffle</button>
-            </div>
-        </div>
-        <div>
-            <div class="song-row-header">
-                <p class="song-col song-col-num">&#35;</p>
-                <p class="song-col song-col-title">Title</p>
-                <p class="song-col song-col-album">Artist</p>
-                <p class="song-col song-col-time">Time</p>
-            </div>
-            {props.set.songs.map(s => (
-                <div class="song-row">
-                    <p class="song-col song-col-num">{s.trackNumber}</p>
-                    <p class="song-col song-col-title">{s.title}</p>
-                    <p class="song-col song-col-artist">{s.artist}</p>
-                    <p class="song-col song-col-tim">{s.duration}</p>
+const SongSet = props => {
+    if (props.loaded) {
+        return (
+            <main id="songset">
+                <div id="songset-meta">
+                    <img src={'/api/image/view/' + props.set.artID} />
+                    <div>
+                        <h1>{props.set.title}</h1>
+                        <p>
+                            {props.set.description != undefined
+                                ? props.set.description
+                                : 'No description'}
+                        </p>
+                        <button>Play</button>
+                    </div>
                 </div>
-            ))}
-        </div>
-    </main>
-);
+                <div id="songset-tracklist">
+                    <div class="song-row">
+                        <p class="song-col song-col-num">&#35;</p>
+                        <p class="song-col song-col-title">Title</p>
+                        <p class="song-col song-col-artist">Artist</p>
+                        <p class="song-col song-col-time">Time</p>
+                    </div>
+                    {props.set.songs.map(s => (
+                        <div class="song-row">
+                            <p class="song-col song-col-num">{s.trackNumber}</p>
+                            <p class="song-col song-col-title">{s.title}</p>
+                            <p class="song-col song-col-artist">{s.artist}</p>
+                            <p class="song-col song-col-time">{s.duration}</p>
+                        </div>
+                    ))}
+                </div>
+            </main>
+        );
+    } else {
+        return (
+            <main id="songset">
+                <div id="songset-meta">
+                    <img />
+                    <div>
+                        <h1></h1>
+                        <p></p>
+                        <button disabled>Play</button>
+                    </div>
+                </div>
+                <div id="songset-tracklist">
+                    <div class="song-row">
+                        <p class="song-col song-col-num">&#35;</p>
+                        <p class="song-col song-col-title">Title</p>
+                        <p class="song-col song-col-artist">Artist</p>
+                        <p class="song-col song-col-time">Time</p>
+                    </div>
+                </div>
+            </main>
+        );
+    }
+};
 
 class WebPlayer extends React.Component {
     constructor(props) {
@@ -82,6 +106,7 @@ class WebPlayer extends React.Component {
             playlists: [],
             homeAlbums: [],
             currentSongSet: {},
+            songSetLoaded: false,
             serverResponded: false,
         };
     }
@@ -110,7 +135,7 @@ class WebPlayer extends React.Component {
                 )).data.sort(
                     (a, b) => Number(a.trackNumber) > Number(b.trackNumber),
                 );
-                this.setState({currentSongSet: songset});
+                this.setState({currentSongSet: songset, songSetLoaded: true});
                 resolve();
             });
     };
@@ -129,7 +154,10 @@ class WebPlayer extends React.Component {
     }
 
     async getSnapshotBeforeUpdate(prevProps, prevState) {
-        if (prevProps.url != this.props.url) await this.handleAPICalls();
+        if (prevProps.url != this.props.url) {
+            this.setState({songSetLoaded: false});
+            await this.handleAPICalls();
+        }
     }
     render() {
         if (this.state.serverResponded) {
@@ -155,7 +183,10 @@ class WebPlayer extends React.Component {
                         <Route
                             path="/album/:id"
                             component={() => (
-                                <SongSet set={this.state.currentSongSet} />
+                                <SongSet
+                                    set={this.state.currentSongSet}
+                                    loaded={this.state.songSetLoaded}
+                                />
                             )}
                         />
                     </Switch>

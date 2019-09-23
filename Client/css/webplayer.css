@@ -12,6 +12,7 @@
 }
 #sidebar {
     box-sizing: border-box;
+    min-width: 230px;
     padding: 15px 15px;
 }
 #sidebar ul {
@@ -34,7 +35,59 @@
     margin-right: 7px;
 }
 
+#home {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    align-items: flex-start;
+    align-content: space-between;
+}
 #home img {
     height: 250px;
     width: 250px;
+    margin: 15px 15px;
+}
+#songset {
+    width: 100%;
+    display: flex;
+}
+#songset img {
+    height: 320px;
+    width: 320px;
+    background-color: #333;
+}
+#songset-meta {
+    text-align: center;
+    width: 320px;
+    margin: 30px 85px;
+}
+#songset-meta div > * {
+    margin-top: 15px;
+}
+#songset-tracklist {
+    width: 90%;
+    text-align: left;
+}
+.song-row {
+    display: flex;
+    height: 45px;
+    margin: 25px 25px;
+    padding: 7px 15px;
+}
+.song-row:hover {
+    cursor: pointer;
+    background-color: #DDD;
+}
+.song-col {
+    display: flex;
+    align-items: center;
+}
+.song-col-num {
+    width: 5%;
+}
+.song-col-title {
+    width: 55%;
+}
+.song-col-artist {
+    width: 33%;
 }
