@@ -128,34 +128,47 @@ api.get('/logout', (request, response) => {
 });
 
 // creating/managing playlists
-api.get('/playlist/new', async (request, response) => {
-    let data = {
-        title: 'New Playlist',
-        creatorID: request.session.user,
-        artID: '',
-        description: '',
-        songs: [],
-    };
+api.post(
+    '/playlist/new',
+    multer({storage: multer.memoryStorage()}).none(),
+    async (request, response) => {
+        if (!request.session.user) {
+            response.json({msg: 'Not Logged In'});
+            return;
+        }
+        if (!request.body.title) {
+            response.json({msg: 'No title provided'});
+        }
+        let b = request.body;
+        let data = {
+            title: b.title,
+            creatorID: request.session.user,
+            artID: '',
+            description: b.description ? b.description : '',
+            songs: [],
+        };
 
-    let newPlaylist;
-    try {
-        newPlaylist = (await db.collection('playlists').insertOne(data)).ops[0];
-    } catch (err) {
-        return response.status(500).json(err);
-    }
+        let newPlaylist;
+        try {
+            newPlaylist = (await db.collection('playlists').insertOne(data))
+                .ops[0];
+        } catch (err) {
+            return response.status(500).json(err);
+        }
 
-    try {
-        await db
-            .collection('users')
-            .findOneAndUpdate(
-                {_id: new ObjectID(request.session.user)},
-                {$push: {playlists: newPlaylist._id}},
-            );
-        response.status(201).json(newPlaylist);
-    } catch (err) {
-        response.status(500).json(err);
-    }
-});
+        try {
+            await db
+                .collection('users')
+                .findOneAndUpdate(
+                    {_id: new ObjectID(request.session.user)},
+                    {$push: {playlists: newPlaylist._id}},
+                );
+            response.status(201).json(newPlaylist);
+        } catch (err) {
+            response.status(500).json(err);
+        }
+    },
+);
 
 api.get('/playlist/view/:playlistID', async (request, response) => {
     try {

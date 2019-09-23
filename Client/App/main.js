@@ -1,44 +1,5 @@
 const {Link, Switch, Route, BrowserRouter, Redirect} = window.ReactRouterDOM;
 
-const Sidebar = props => (
-    <nav id="sidebar">
-        <ul>
-            <li id="accountControl">
-                <img src="/img/user_logo.jpg" alt="Profile Picture" />
-                <p>{props.email.replace(/@.*/, '')}</p>
-            </li>
-        </ul>
-        <ul>
-            <Link to="/">
-                <li>Home</li>
-            </Link>
-            <Link to="/library">
-                <li>Library</li>
-            </Link>
-        </ul>
-        <ul>
-            <li>New Playlist</li>
-            {props.playlists.map(p => (
-                <Link to={'/playlist/' + p._id}>
-                    <li to={'/playlist/' + p._id}>{p.name}</li>
-                </Link>
-            ))}
-        </ul>
-    </nav>
-);
-
-const Controls = () => <div />;
-const Home = props => (
-    <main id="home">
-        {props.albums.map(a => (
-            <Link to={'/album/' + a._id}>
-                <img src={'/api/image/view/' + a.artID} />
-            </Link>
-        ))}
-    </main>
-);
-const Library = () => <main id="library"></main>;
-
 // credit for this function: https://github.com/matkl/average-color
 function getAverageColor(img) {
     var canvas = document.createElement('canvas');
@@ -67,12 +28,68 @@ function getAverageColor(img) {
     return {r, g, b};
 }
 
+const Sidebar = props => (
+    <nav id="sidebar">
+        <ul>
+            <li id="accountControl">
+                <img src="/img/user-circle-solid.svg" alt="Profile Picture" />
+                <p>{props.email.replace(/@.*/, '')}</p>
+            </li>
+        </ul>
+        <ul>
+            <Link to="/">
+                <li>Home</li>
+            </Link>
+            <Link to="/library">
+                <li>Library</li>
+            </Link>
+        </ul>
+        <ul>
+            <li>New Playlist</li>
+            {props.playlists.map(p => (
+                <Link to={'/playlist/' + p._id}>
+                    <li to={'/playlist/' + p._id}>{p.title}</li>
+                </Link>
+            ))}
+        </ul>
+    </nav>
+);
+
+const Controls = () => <div />;
+const Home = props => (
+    <main id="home">
+        {props.albums.map(a => (
+            <Link to={'/album/' + a._id}>
+                <img src={'/api/image/view/' + a.artID} />
+            </Link>
+        ))}
+    </main>
+);
+const Library = () => <main id="library"></main>;
+
+const ContextMenu = props => (
+    <div id="playlistcontextmenu">
+        <ul>
+            <li>Play Next</li>
+            <li>Add To Queue</li>
+            <hr />
+            <li>Go To Album</li>
+            <hr />
+            <li>Add To Library</li>
+            {props.playlists.map(p => (
+                <li>{'Add To ' + p.title}</li>
+            ))}
+        </ul>
+    </div>
+);
+
 // album or playlist
 class SongSet extends React.Component {
     constructor(props) {
         super(props);
     }
     componentDidMount() {
+        // generate background color
         let albumArt = document.getElementById('albumArt');
         if (albumArt != null)
             albumArt.onload = () => {
@@ -82,6 +99,13 @@ class SongSet extends React.Component {
                     'linear-gradient(' + avg + ',#191715)';
             };
     }
+    showContextMenu = e => {
+        e.preventDefault();
+        e.persist();
+        console.log(e);
+        let id = e.target.id || e.target.parentElement.id;
+        this.props.showContextMenu(id, e.pageX, e.pageY);
+    };
     render() {
         let props = this.props;
         if (props.loaded) {
@@ -111,7 +135,10 @@ class SongSet extends React.Component {
                             <p class="song-col song-col-time">Time</p>
                         </div>
                         {props.set.songs.map(s => (
-                            <div class="song-row">
+                            <div
+                                class="song-row"
+                                id={s._id}
+                                onContextMenu={this.showContextMenu}>
                                 <p class="song-col song-col-num">
                                     {s.trackNumber}
                                 </p>
@@ -205,6 +232,13 @@ class WebPlayer extends React.Component {
         // main queries
         await this.handleAPICalls();
         this.setState({serverResponded: true});
+
+        // event listeners for context menu removal
+        window.addEventListener('resize', this.hideContextMenu);
+    }
+
+    componentWillUnMount() {
+        window.removeEventListener('resize', this.hideContextMenu, true);
     }
 
     async getSnapshotBeforeUpdate(prevProps, prevState) {
@@ -213,10 +247,30 @@ class WebPlayer extends React.Component {
             await this.handleAPICalls();
         }
     }
+
+    showContextMenu = (id, x, y) => {
+        //        this.setState({contextMenuSongID: id});
+        let cm = document.getElementById('playlistcontextmenu');
+        cm.style.visibility = 'visible';
+        cm.style.position = 'absolute';
+        console.log(cm.offsetWidth);
+
+        if (x + cm.offsetWidth < window.innerWidth) cm.style.left = x + 'px';
+        else cm.style.left = x - cm.offsetWidth + 'px';
+
+        if (y + cm.offsetHeight < window.innerHeight) cm.style.top = y + 'px';
+        else cm.style.top = y - cm.offsetHeight + 'px';
+    };
+    hideContextMenu = () => {
+        let cm = document.getElementById('playlistcontextmenu');
+        cm.style.visibility = 'hidden';
+        cm.style.left = '0px';
+        cm.style.top = '0px';
+    };
     render() {
         if (this.state.serverResponded) {
             return (
-                <div id="webPlayer">
+                <div id="webPlayer" onClick={this.hideContextMenu}>
                     <Sidebar
                         email={this.state.email}
                         playlists={this.state.playlists}
@@ -240,11 +294,13 @@ class WebPlayer extends React.Component {
                                 <SongSet
                                     set={this.state.currentSongSet}
                                     loaded={this.state.songSetLoaded}
+                                    showContextMenu={this.showContextMenu}
                                 />
                             )}
                         />
                     </Switch>
                     <Controls />
+                    <ContextMenu playlists={this.state.playlists} />
                 </div>
             );
         } else {
