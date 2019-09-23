@@ -14,6 +14,8 @@
     box-sizing: border-box;
     min-width: 230px;
     padding: 15px 15px;
+    height: 100vh;
+    overflow: auto;
 }
 #sidebar ul {
     margin-bottom: 25px;
@@ -49,17 +51,26 @@
 }
 #songset {
     width: 100%;
+    height: 100vh;
+    overflow: auto;
     display: flex;
+    background-color: #191715;
+    color: white;
 }
-#songset img {
+#albumArtPlaceholder {
     height: 320px;
     width: 320px;
     background-color: #333;
 }
+#albumArt {
+    height: 320px;
+    width: 320px;
+    animation: fadein 750ms;
+}
 #songset-meta {
     text-align: center;
     width: 320px;
-    margin: 30px 85px;
+    margin: 5vh 5vw;
 }
 #songset-meta div > * {
     margin-top: 15px;
@@ -67,6 +78,7 @@
 #songset-tracklist {
     width: 90%;
     text-align: left;
+    animation: fadein 750ms;
 }
 .song-row {
     display: flex;
@@ -76,7 +88,8 @@
 }
 .song-row:hover {
     cursor: pointer;
-    background-color: #DDD;
+    background-color: #fff;
+    color: #191715;
 }
 .song-col {
     display: flex;

@@ -4,7 +4,7 @@ const Sidebar = props => (
     <nav id="sidebar">
         <ul>
             <li id="accountControl">
-                <img src="/img/user_logo.jpg" />
+                <img src="/img/user_logo.jpg" alt="Profile Picture" />
                 <p>{props.email.replace(/@.*/, '')}</p>
             </li>
         </ul>
@@ -39,64 +39,118 @@ const Home = props => (
 );
 const Library = () => <main id="library"></main>;
 
-// album or playlist
-const SongSet = props => {
-    if (props.loaded) {
-        return (
-            <main id="songset">
-                <div id="songset-meta">
-                    <img src={'/api/image/view/' + props.set.artID} />
-                    <div>
-                        <h1>{props.set.title}</h1>
-                        <p>
-                            {props.set.description != undefined
-                                ? props.set.description
-                                : 'No description'}
-                        </p>
-                        <button>Play</button>
-                    </div>
-                </div>
-                <div id="songset-tracklist">
-                    <div class="song-row">
-                        <p class="song-col song-col-num">&#35;</p>
-                        <p class="song-col song-col-title">Title</p>
-                        <p class="song-col song-col-artist">Artist</p>
-                        <p class="song-col song-col-time">Time</p>
-                    </div>
-                    {props.set.songs.map(s => (
-                        <div class="song-row">
-                            <p class="song-col song-col-num">{s.trackNumber}</p>
-                            <p class="song-col song-col-title">{s.title}</p>
-                            <p class="song-col song-col-artist">{s.artist}</p>
-                            <p class="song-col song-col-time">{s.duration}</p>
-                        </div>
-                    ))}
-                </div>
-            </main>
-        );
-    } else {
-        return (
-            <main id="songset">
-                <div id="songset-meta">
-                    <img />
-                    <div>
-                        <h1></h1>
-                        <p></p>
-                        <button disabled>Play</button>
-                    </div>
-                </div>
-                <div id="songset-tracklist">
-                    <div class="song-row">
-                        <p class="song-col song-col-num">&#35;</p>
-                        <p class="song-col song-col-title">Title</p>
-                        <p class="song-col song-col-artist">Artist</p>
-                        <p class="song-col song-col-time">Time</p>
-                    </div>
-                </div>
-            </main>
-        );
+// credit for this function: https://github.com/matkl/average-color
+function getAverageColor(img) {
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d');
+    var width = (canvas.width = img.naturalWidth);
+    var height = (canvas.height = img.naturalHeight);
+
+    ctx.drawImage(img, 0, 0);
+
+    var imageData = ctx.getImageData(0, 0, width, height);
+    var data = imageData.data;
+    var r = 0;
+    var g = 0;
+    var b = 0;
+
+    for (var i = 0, l = data.length; i < l; i += 4) {
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
     }
-};
+
+    r = Math.floor(r / (data.length / 4));
+    g = Math.floor(g / (data.length / 4));
+    b = Math.floor(b / (data.length / 4));
+
+    return {r, g, b};
+}
+
+// album or playlist
+class SongSet extends React.Component {
+    constructor(props) {
+        super(props);
+    }
+    componentDidMount() {
+        let albumArt = document.getElementById('albumArt');
+        if (albumArt != null)
+            albumArt.onload = () => {
+                let avg = getAverageColor(albumArt);
+                avg = 'rgb(' + avg.r + ',' + avg.g + ',' + avg.b + ')';
+                document.getElementById('songset').style.backgroundImage =
+                    'linear-gradient(' + avg + ',#191715)';
+            };
+    }
+    render() {
+        let props = this.props;
+        if (props.loaded) {
+            return (
+                <main id="songset">
+                    <div id="songset-meta">
+                        <img
+                            id="albumArt"
+                            src={'/api/image/view/' + props.set.artID}
+                            alt="Album Cover"
+                        />
+                        <div>
+                            <h1>{props.set.title}</h1>
+                            <p>
+                                {props.set.description != undefined
+                                    ? props.set.description
+                                    : 'No description'}
+                            </p>
+                            <button>Play</button>
+                        </div>
+                    </div>
+                    <div id="songset-tracklist">
+                        <div class="song-row">
+                            <p class="song-col song-col-num">&#35;</p>
+                            <p class="song-col song-col-title">Title</p>
+                            <p class="song-col song-col-artist">Artist</p>
+                            <p class="song-col song-col-time">Time</p>
+                        </div>
+                        {props.set.songs.map(s => (
+                            <div class="song-row">
+                                <p class="song-col song-col-num">
+                                    {s.trackNumber}
+                                </p>
+                                <p class="song-col song-col-title">{s.title}</p>
+                                <p class="song-col song-col-artist">
+                                    {s.artist}
+                                </p>
+                                <p class="song-col song-col-time">
+                                    {s.duration}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </main>
+            );
+        } else {
+            return (
+                <main id="songset">
+                    <div id="songset-meta">
+                        <div id="albumArtPlaceholder" />
+                        <div>
+                            <h1></h1>
+                            <p></p>
+                            <button disabled>Play</button>
+                        </div>
+                    </div>
+                    <div id="songset-tracklist">
+                        <div class="song-row">
+                            <p class="song-col song-col-num">&#35;</p>
+                            <p class="song-col song-col-title">Title</p>
+                            <p class="song-col song-col-artist">Artist</p>
+                            <p class="song-col song-col-time">Time</p>
+                        </div>
+                    </div>
+                </main>
+            );
+        }
+    }
+}
 
 class WebPlayer extends React.Component {
     constructor(props) {
