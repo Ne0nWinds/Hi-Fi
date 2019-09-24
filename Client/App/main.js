@@ -94,6 +94,7 @@ const ContextMenu = props => {
 class SongSet extends React.Component {
     constructor(props) {
         super(props);
+        this.count = 0;
     }
     componentDidMount() {
         // generate background color
@@ -117,11 +118,21 @@ class SongSet extends React.Component {
             return (
                 <main id="songset">
                     <div id="songset-meta">
-                        <img
-                            id="albumArt"
-                            src={'/api/image/view/' + this.props.set.artID}
-                            alt="Album Cover"
-                        />
+                        {this.props.set.artID != '' ? (
+                            <img
+                                id="albumArt"
+                                src={'/api/image/view/' + this.props.set.artID}
+                                alt="Album Cover"
+                            />
+                        ) : (
+                            <div id="songset-img-placeholder">
+                                No{' '}
+                                {this.props.set.isAlbum
+                                    ? 'Album Cover'
+                                    : 'Playlist Photo'}{' '}
+                                Available
+                            </div>
+                        )}
                         <div>
                             <h1>{this.props.set.title}</h1>
                             <p>
@@ -133,29 +144,36 @@ class SongSet extends React.Component {
                         </div>
                     </div>
                     <div id="songset-tracklist">
-                        <div class="song-row">
+                        <div class="song-row" id="song-row-header">
                             <p class="song-col song-col-num">&#35;</p>
                             <p class="song-col song-col-title">Title</p>
                             <p class="song-col song-col-artist">Artist</p>
                             <p class="song-col song-col-time">Time</p>
                         </div>
-                        {this.props.set.songs.map(s => (
-                            <div
-                                class="song-row"
-                                id={s._id}
-                                onContextMenu={this.showContextMenu}>
-                                <p class="song-col song-col-num">
-                                    {s.trackNumber}
-                                </p>
-                                <p class="song-col song-col-title">{s.title}</p>
-                                <p class="song-col song-col-artist">
-                                    {s.artist}
-                                </p>
-                                <p class="song-col song-col-time">
-                                    {s.duration}
-                                </p>
-                            </div>
-                        ))}
+                        {this.props.set.songs.map(s => {
+                            this.count++;
+                            return (
+                                <div
+                                    class="song-row"
+                                    id={s._id}
+                                    onContextMenu={this.showContextMenu}>
+                                    <p class="song-col song-col-num">
+                                        {this.props.set.isAlbum
+                                            ? s.trackNumber
+                                            : this.count}
+                                    </p>
+                                    <p class="song-col song-col-title">
+                                        {s.title}
+                                    </p>
+                                    <p class="song-col song-col-artist">
+                                        {s.artist}
+                                    </p>
+                                    <p class="song-col song-col-time">
+                                        {s.duration}
+                                    </p>
+                                </div>
+                            );
+                        })}
                     </div>
                 </main>
             );
@@ -189,6 +207,7 @@ class WebPlayer extends React.Component {
         super(props);
         this.state = {
             email: this.props.user.email,
+            userID: this.props.user._id,
             playlists: [],
             homeAlbums: [],
             currentSongSet: {},
@@ -224,7 +243,7 @@ class WebPlayer extends React.Component {
                 )).data.sort(
                     (a, b) => Number(a.trackNumber) > Number(b.trackNumber),
                 );
-                console.log(songset.songs);
+                songset.isAlbum = url[0] == 'album';
                 this.setState({currentSongSet: songset, songSetLoaded: true});
                 resolve();
             });
@@ -333,6 +352,9 @@ class WebPlayer extends React.Component {
                         playlists={this.state.playlists}
                         addToPlaylist={this.addToPlaylist}
                     />
+                    <div id="controls">
+                        
+                    </div>
                 </div>
             );
         } else {

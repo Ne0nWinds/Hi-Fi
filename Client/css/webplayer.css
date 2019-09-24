@@ -65,6 +65,10 @@
     width: 320px;
     animation: fadein 750ms;
 }
+#songset-img-placeholder {
+    width: 320px;
+    height: 320px;
+}
 #songset-meta {
     text-align: center;
     width: 320px;
@@ -88,6 +92,11 @@
     cursor: pointer;
     background-color: #fff;
     color: #191715;
+}
+#song-row-header:hover {
+    cursor: default;
+    background-color: transparent;
+    color: white;
 }
 .song-col {
     display: flex;
