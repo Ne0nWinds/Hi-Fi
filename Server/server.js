@@ -209,6 +209,7 @@ api.post(
             song = await db
                 .collection('songs')
                 .findOne({_id: new ObjectID(request.body.songID)});
+            if (song == null) throw 'Invalid Song ID';
         } catch (err) {
             response.status(400).json({msg: 'Invalid Song ID'});
         }
@@ -218,7 +219,7 @@ api.post(
                 .collection('playlists')
                 .findOneAndUpdate(
                     {_id: new ObjectID(request.body.playlistID)},
-                    {$addToSet: {songs: new ObjectID(request.body.playlistID)}},
+                    {$addToSet: {songs: new ObjectID(request.body.songID)}},
                 );
             response.json({msg: 'Playlist Updated Successfully'});
         } catch (err) {
@@ -386,14 +387,18 @@ api.post(
     async (request, response) => {
         try {
             let playlist = request.body.songs.split(','); // works for playlists and albums
+            if (playlist[0] == '') playlist = [];
             for (let i in playlist) playlist[i] = new ObjectID(playlist[i]);
 
-            let data = await db
-                .collection('songs')
-                .find({_id: {$in: playlist}})
-                .toArray();
+            let data = [];
+            if (playlist.length > 0)
+                data = await db
+                    .collection('songs')
+                    .find({_id: {$in: playlist}})
+                    .toArray();
             response.json(data);
         } catch (err) {
+            console.log(err);
             response.status(400).json({msg: 'Invalid Playlist ID(s)'});
         }
     },

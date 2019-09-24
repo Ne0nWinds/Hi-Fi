@@ -67,21 +67,28 @@ const Home = props => (
 );
 const Library = () => <main id="library"></main>;
 
-const ContextMenu = props => (
-    <div id="playlistcontextmenu">
-        <ul>
-            <li>Play Next</li>
-            <li>Add To Queue</li>
-            <hr />
-            <li>Go To Album</li>
-            <hr />
-            <li>Add To Library</li>
-            {props.playlists.map(p => (
-                <li>{'Add To ' + p.title}</li>
-            ))}
-        </ul>
-    </div>
-);
+const ContextMenu = props => {
+    let addToPlaylist = e => {
+        props.addToPlaylist(e.target.id);
+    };
+    return (
+        <div id="playlistcontextmenu">
+            <ul>
+                <li>Play Next</li>
+                <li>Add To Queue</li>
+                <hr />
+                <li>Go To Album</li>
+                <hr />
+                <li>Add To Library</li>
+                {props.playlists.map(p => (
+                    <li id={p._id} onClick={addToPlaylist}>
+                        {'Add To ' + p.title}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+};
 
 // album or playlist
 class SongSet extends React.Component {
@@ -102,26 +109,24 @@ class SongSet extends React.Component {
     showContextMenu = e => {
         e.preventDefault();
         e.persist();
-        console.log(e);
         let id = e.target.id || e.target.parentElement.id;
         this.props.showContextMenu(id, e.pageX, e.pageY);
     };
     render() {
-        let props = this.props;
-        if (props.loaded) {
+        if (this.props.loaded) {
             return (
                 <main id="songset">
                     <div id="songset-meta">
                         <img
                             id="albumArt"
-                            src={'/api/image/view/' + props.set.artID}
+                            src={'/api/image/view/' + this.props.set.artID}
                             alt="Album Cover"
                         />
                         <div>
-                            <h1>{props.set.title}</h1>
+                            <h1>{this.props.set.title}</h1>
                             <p>
-                                {props.set.description != undefined
-                                    ? props.set.description
+                                {this.props.set.description != undefined
+                                    ? this.props.set.description
                                     : 'No description'}
                             </p>
                             <button>Play</button>
@@ -134,7 +139,7 @@ class SongSet extends React.Component {
                             <p class="song-col song-col-artist">Artist</p>
                             <p class="song-col song-col-time">Time</p>
                         </div>
-                        {props.set.songs.map(s => (
+                        {this.props.set.songs.map(s => (
                             <div
                                 class="song-row"
                                 id={s._id}
@@ -190,7 +195,9 @@ class WebPlayer extends React.Component {
             songSetLoaded: false,
             serverResponded: false,
         };
+        this.contextMenuSongID = '';
     }
+
     handleAPICalls = async () => {
         let url = this.props.url.substring(1).split('/');
         if (this.state.homeAlbums.length == 0 && url[0] == '')
@@ -199,13 +206,14 @@ class WebPlayer extends React.Component {
                 this.setState({homeAlbums: response.data});
                 resolve();
             });
-        else if (url[0] == 'album')
+        else if (url[0] == 'album' || url[0] == 'playlist')
             return new Promise(async (resolve, reject) => {
                 let response, songset;
 
-                response = await axios.get('/api/album/get/' + url[1]);
+                if (url[0] == 'album')
+                    response = await axios.get('/api/album/get/' + url[1]);
+                else response = await axios.get('/api/playlist/view/' + url[1]);
                 songset = {songs: [], ...response.data};
-
                 let songs = response.data.songs.join(',');
                 let body = new FormData();
                 body.append('songs', songs);
@@ -216,6 +224,7 @@ class WebPlayer extends React.Component {
                 )).data.sort(
                     (a, b) => Number(a.trackNumber) > Number(b.trackNumber),
                 );
+                console.log(songset.songs);
                 this.setState({currentSongSet: songset, songSetLoaded: true});
                 resolve();
             });
@@ -237,10 +246,6 @@ class WebPlayer extends React.Component {
         window.addEventListener('resize', this.hideContextMenu);
     }
 
-    componentWillUnMount() {
-        window.removeEventListener('resize', this.hideContextMenu, true);
-    }
-
     async getSnapshotBeforeUpdate(prevProps, prevState) {
         if (prevProps.url != this.props.url) {
             this.setState({songSetLoaded: false});
@@ -248,25 +253,39 @@ class WebPlayer extends React.Component {
         }
     }
 
+    // context menu
     showContextMenu = (id, x, y) => {
-        //        this.setState({contextMenuSongID: id});
         let cm = document.getElementById('playlistcontextmenu');
         cm.style.visibility = 'visible';
         cm.style.position = 'absolute';
-        console.log(cm.offsetWidth);
 
         if (x + cm.offsetWidth < window.innerWidth) cm.style.left = x + 'px';
         else cm.style.left = x - cm.offsetWidth + 'px';
 
         if (y + cm.offsetHeight < window.innerHeight) cm.style.top = y + 'px';
         else cm.style.top = y - cm.offsetHeight + 'px';
+        this.contextMenuSongID = id;
     };
     hideContextMenu = () => {
         let cm = document.getElementById('playlistcontextmenu');
+        this.contextMenuSongID = '';
         cm.style.visibility = 'hidden';
         cm.style.left = '0px';
         cm.style.top = '0px';
     };
+    componentWillUnMount() {
+        window.removeEventListener('resize', this.hideContextMenu, true);
+    }
+
+    // playlist management
+    addToPlaylist = async playlistID => {
+        let body = new FormData();
+        body.append('songID', this.contextMenuSongID);
+        body.append('playlistID', playlistID);
+        let response = await axios.post('/api/playlist/addsong', body);
+        console.log(response);
+    };
+
     render() {
         if (this.state.serverResponded) {
             return (
@@ -298,9 +317,22 @@ class WebPlayer extends React.Component {
                                 />
                             )}
                         />
+                        <Route
+                            path="/playlist/:id"
+                            component={() => (
+                                <SongSet
+                                    set={this.state.currentSongSet}
+                                    loaded={this.state.songSetLoaded}
+                                    showContextMenu={this.showContextMenu}
+                                />
+                            )}
+                        />
                     </Switch>
                     <Controls />
-                    <ContextMenu playlists={this.state.playlists} />
+                    <ContextMenu
+                        playlists={this.state.playlists}
+                        addToPlaylist={this.addToPlaylist}
+                    />
                 </div>
             );
         } else {
