@@ -122,9 +122,7 @@ api.get('/loggedInUser', async (request, response) => {
 
 api.get('/logout', (request, response) => {
     delete request.session.user;
-    response.json({
-        msg: 'Logout Successful',
-    });
+    response.json({msg: 'Logout Successful'});
 });
 
 // creating/managing playlists
@@ -368,6 +366,49 @@ api.get('/stream/:id', async (request, response) => {
     downloadStream.on('err', () => response.status(404));
 
     downloadStream.on('end', () => response.end());
+});
+
+api.get('/mpd/:id', async (request, response) => {
+    let DataID, songInDb;
+    try {
+        DataID = new ObjectID(request.params.id);
+        songInDb = await db.collection('songs').findOne({_id: DataID});
+        if (songInDb == null) throw 'Not Found';
+    } catch (err) {
+        response.status(404).end();
+        return;
+    }
+    response.set('content-type', 'application/dash+xml');
+    let output = `
+<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" minBufferTime="PT5S" type="static" mediaPresentationDuration="PT506.8016357421875S">
+  <Period id="0">
+    <AdaptationSet id="0" contentType="audio" subsegmentAlignment="true">
+      <Representation id="0" bandwidth="134948" codecs="mp4a.40.2" mimeType="audio/mp4" audioSamplingRate="44100">
+        <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+            <BaseURL>/stream/${songInDb.dataIDs['96k']}</BaseURL>
+        <SegmentBase indexRange="822-${songInDb.indexRange}" timescale="44100">
+          <Initialization range="0-821"/>
+        </SegmentBase>
+      </Representation>
+      <Representation id="1" bandwidth="350000" codecs="mp4a.40.2" mimeType="audio/mp4" audioSamplingRate="44100">
+        <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+            <BaseURL>/stream/${songInDb.dataIDs['128k']}</BaseURL>
+        <SegmentBase indexRange="822-${songInDb.indexRange}" timescale="44100">
+          <Initialization range="0-821"/>
+        </SegmentBase>
+      </Representation>
+      <Representation id="2" bandwidth="700000" codecs="mp4a.40.2" mimeType="audio/mp4" audioSamplingRate="44100">
+        <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+            <BaseURL>/stream/${songInDb.dataIDs['192k']}</BaseURL>
+        <SegmentBase indexRange="822-${songInDb.indexRange}" timescale="44100">
+          <Initialization range="0-821"/>
+        </SegmentBase>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD> `;
+    response.send(output);
 });
 
 api.get('/song/:id', async (request, response) => {
