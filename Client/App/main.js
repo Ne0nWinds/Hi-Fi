@@ -55,7 +55,6 @@ const Sidebar = props => (
     </nav>
 );
 
-const Controls = () => <div />;
 const Home = props => (
     <main id="home">
         {props.albums.map(a => (
@@ -113,92 +112,106 @@ class SongSet extends React.Component {
         let id = e.target.id || e.target.parentElement.id;
         this.props.showContextMenu(id, e.pageX, e.pageY);
     };
-    render() {
-        if (this.props.loaded) {
-            return (
-                <main id="songset">
-                    <div id="songset-meta">
-                        {this.props.set.artID != '' ? (
-                            <img
-                                id="albumArt"
-                                src={'/api/image/view/' + this.props.set.artID}
-                                alt="Album Cover"
-                            />
-                        ) : (
-                            <div id="songset-img-placeholder">
-                                No{' '}
-                                {this.props.set.isAlbum
-                                    ? 'Album Cover'
-                                    : 'Playlist Photo'}{' '}
-                                Available
-                            </div>
-                        )}
-                        <div>
-                            <h1>{this.props.set.title}</h1>
-                            <p>
-                                {this.props.set.description != undefined
-                                    ? this.props.set.description
-                                    : 'No description'}
-                            </p>
-                            <button>Play</button>
-                        </div>
-                    </div>
-                    <div id="songset-tracklist">
-                        <div class="song-row" id="song-row-header">
-                            <p class="song-col song-col-num">&#35;</p>
-                            <p class="song-col song-col-title">Title</p>
-                            <p class="song-col song-col-artist">Artist</p>
-                            <p class="song-col song-col-time">Time</p>
-                        </div>
-                        {this.props.set.songs.map(s => {
-                            this.count++;
-                            return (
-                                <div
-                                    class="song-row"
-                                    id={s._id}
-                                    onContextMenu={this.showContextMenu}>
-                                    <p class="song-col song-col-num">
-                                        {this.props.set.isAlbum
-                                            ? s.trackNumber
-                                            : this.count}
-                                    </p>
-                                    <p class="song-col song-col-title">
-                                        {s.title}
-                                    </p>
-                                    <p class="song-col song-col-artist">
-                                        {s.artist}
-                                    </p>
-                                    <p class="song-col song-col-time">
-                                        {s.duration}
-                                    </p>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </main>
-            );
+    playSong = e => {
+        e.persist();
+        let id = e.target.id || e.target.parentElement.id;
+        let song = this.props.set.songs.find(i => i._id == id);
+        if (this.props.set.isAlbum) {
+            this.props.playSong(song, this.props.set.artID);
         } else {
-            return (
-                <main id="songset">
-                    <div id="songset-meta">
-                        <div id="albumArtPlaceholder" />
-                        <div>
-                            <h1></h1>
-                            <p></p>
-                            <button disabled>Play</button>
-                        </div>
-                    </div>
-                    <div id="songset-tracklist">
-                        <div class="song-row">
-                            <p class="song-col song-col-num">&#35;</p>
-                            <p class="song-col song-col-title">Title</p>
-                            <p class="song-col song-col-artist">Artist</p>
-                            <p class="song-col song-col-time">Time</p>
-                        </div>
-                    </div>
-                </main>
-            );
+            this.props.playSong(song);
         }
+    };
+    render() {
+        return (
+            <div>
+                {this.props.loaded ? (
+                    <main id="songset">
+                        <div id="songset-meta">
+                            {this.props.set.artID != '' ? (
+                                <img
+                                    id="albumArt"
+                                    src={
+                                        '/api/image/view/' +
+                                        this.props.set.artID
+                                    }
+                                    alt="Album Cover"
+                                />
+                            ) : (
+                                <div id="songset-img-placeholder">
+                                    No{' '}
+                                    {this.props.set.isAlbum
+                                        ? 'Album Cover'
+                                        : 'Playlist Photo'}{' '}
+                                    Available
+                                </div>
+                            )}
+                            <div>
+                                <h1>{this.props.set.title}</h1>
+                                <p>
+                                    {this.props.set.description != undefined
+                                        ? this.props.set.description
+                                        : 'No description'}
+                                </p>
+                                <button>Play</button>
+                            </div>
+                        </div>
+                        <div id="songset-tracklist">
+                            <div class="song-row" id="song-row-header">
+                                <p class="song-col song-col-num">&#35;</p>
+                                <p class="song-col song-col-title">Title</p>
+                                <p class="song-col song-col-artist">Artist</p>
+                                <p class="song-col song-col-time">Time</p>
+                            </div>
+                            {this.props.set.songs.map(s => {
+                                this.count++;
+                                return (
+                                    <div
+                                        class="song-row"
+                                        id={s._id}
+                                        onClick={this.playSong}
+                                        onContextMenu={this.showContextMenu}>
+                                        <p class="song-col song-col-num">
+                                            {this.props.set.isAlbum
+                                                ? s.trackNumber
+                                                : this.count}
+                                        </p>
+                                        <p class="song-col song-col-title">
+                                            {s.title}
+                                        </p>
+                                        <p class="song-col song-col-artist">
+                                            {s.artist}
+                                        </p>
+                                        <p class="song-col song-col-time">
+                                            {s.duration}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </main>
+                ) : (
+                    <main id="songset">
+                        <div id="songset-meta">
+                            <div id="albumArtPlaceholder" />
+                            <div>
+                                <h1></h1>
+                                <p></p>
+                                <button disabled>Play</button>
+                            </div>
+                        </div>
+                        <div id="songset-tracklist">
+                            <div class="song-row">
+                                <p class="song-col song-col-num">&#35;</p>
+                                <p class="song-col song-col-title">Title</p>
+                                <p class="song-col song-col-artist">Artist</p>
+                                <p class="song-col song-col-time">Time</p>
+                            </div>
+                        </div>
+                    </main>
+                )}
+            </div>
+        );
     }
 }
 
@@ -215,6 +228,7 @@ class WebPlayer extends React.Component {
             serverResponded: false,
         };
         this.contextMenuSongID = '';
+        this.audio = new Audio();
     }
 
     handleAPICalls = async () => {
@@ -292,6 +306,26 @@ class WebPlayer extends React.Component {
         cm.style.left = '0px';
         cm.style.top = '0px';
     };
+
+    playSong = (songObj, artID = null) => {
+        document.getElementById('controls-song-title').innerText =
+            songObj.title;
+        document.getElementById('controls-song-artist').innerText =
+            songObj.artist;
+        if (artID != null) {
+            console.log('attempt');
+            document.getElementById('left-controls-album-cover').src =
+                '/api/image/view/' + artID;
+        } else {
+            document.getElementById('left-controls-album-cover').src = '';
+            axios.get('/api/album/get/' + songObj.albumID).then(response => {
+                if (response.status == 200)
+                    document.getElementById('left-controls-album-cover').src =
+                        '/api/image/view/' + response.data.artID;
+            });
+        }
+    };
+
     componentWillUnMount() {
         window.removeEventListener('resize', this.hideContextMenu, true);
     }
@@ -302,68 +336,93 @@ class WebPlayer extends React.Component {
         body.append('songID', this.contextMenuSongID);
         body.append('playlistID', playlistID);
         let response = await axios.post('/api/playlist/addsong', body);
-        console.log(response);
     };
 
     render() {
-        if (this.state.serverResponded) {
-            return (
-                <div id="webPlayer" onClick={this.hideContextMenu}>
-                    <Sidebar
-                        email={this.state.email}
-                        playlists={this.state.playlists}
-                    />
-                    <Switch>
-                        <Route
-                            exact
-                            path="/"
-                            component={() => (
-                                <Home albums={this.state.homeAlbums} />
-                            )}
+        return (
+            <div>
+                {this.state.serverResponded ? (
+                    <div id="webPlayer" onClick={this.hideContextMenu}>
+                        <Sidebar
+                            email={this.state.email}
+                            playlists={this.state.playlists}
                         />
-                        <Route
-                            exact
-                            path="/library"
-                            component={() => <Library />}
+                        <Switch>
+                            <Route
+                                exact
+                                path="/"
+                                component={() => (
+                                    <Home albums={this.state.homeAlbums} />
+                                )}
+                            />
+                            <Route
+                                exact
+                                path="/library"
+                                component={() => <Library />}
+                            />
+                            <Route
+                                path="/album/:id"
+                                component={() => (
+                                    <SongSet
+                                        set={this.state.currentSongSet}
+                                        loaded={this.state.songSetLoaded}
+                                        showContextMenu={this.showContextMenu}
+                                        playSong={this.playSong}
+                                    />
+                                )}
+                            />
+                            <Route
+                                path="/playlist/:id"
+                                component={() => (
+                                    <SongSet
+                                        set={this.state.currentSongSet}
+                                        loaded={this.state.songSetLoaded}
+                                        showContextMenu={this.showContextMenu}
+                                        playSong={this.playSong}
+                                    />
+                                )}
+                            />
+                        </Switch>
+                        <ContextMenu
+                            playlists={this.state.playlists}
+                            addToPlaylist={this.addToPlaylist}
                         />
-                        <Route
-                            path="/album/:id"
-                            component={() => (
-                                <SongSet
-                                    set={this.state.currentSongSet}
-                                    loaded={this.state.songSetLoaded}
-                                    showContextMenu={this.showContextMenu}
-                                />
-                            )}
-                        />
-                        <Route
-                            path="/playlist/:id"
-                            component={() => (
-                                <SongSet
-                                    set={this.state.currentSongSet}
-                                    loaded={this.state.songSetLoaded}
-                                    showContextMenu={this.showContextMenu}
-                                />
-                            )}
-                        />
-                    </Switch>
-                    <Controls />
-                    <ContextMenu
-                        playlists={this.state.playlists}
-                        addToPlaylist={this.addToPlaylist}
-                    />
-                    <div id="controls">
-                        
+                        <div id="controls">
+                            <span id="progress-container">
+                                <div id="progress" />
+                            </span>
+                            <div id="left-controls">
+                                <img id="left-controls-album-cover" src="" />
+                                <div>
+                                    <p id="controls-song-title"></p>
+                                    <p id="controls-song-artist"></p>
+                                </div>
+                            </div>
+                            <div id="main-controls">
+                                <i class="fa skip">&#xf049;</i>
+                                <i class="fa" id="pause-play">
+                                    &#xf01d;
+                                </i>
+                                <i class="fa skip">&#xf050;</i>
+                            </div>
+                            <div id="right-controls">
+                                <div>
+                                    <i class="fa">&#xf028;</i>
+                                    <div id="volume-slider-container">
+                                        <div id="volume-slider"></div>
+                                    </div>
+                                </div>
+                                <i class="fa">&#xf00b;</i>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            );
-        } else {
-            return (
-                <div id="appAnimContainer">
-                    <img id="loadingAnim" src="/img/logo.svg" />
-                </div>
-            );
-        }
+                ) : (
+                    <div id="appAnimContainer">
+                        <img id="loadingAnim" src="/img/logo.svg" />
+                    </div>
+                )}
+            </div>
+        );
     }
 }
 

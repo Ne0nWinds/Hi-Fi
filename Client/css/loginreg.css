@@ -67,6 +67,7 @@
     border: 2px solid #777;
     padding: 8px;
     font-size: 16px;
+    animation: fadein 1s;
 }
 #loginreg button {
     background-color: #ffa30b;

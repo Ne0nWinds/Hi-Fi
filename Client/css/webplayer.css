@@ -23,6 +23,7 @@
     height: 45px;
     display: flex;
     align-items: center;
+    animation: fadein 750ms;
 }
 #sidebar #accountControl {
     display: flex;
@@ -138,4 +139,96 @@
 }
 #playlistcontextmenu hr {
     margin: 10px 0px;
+}
+:root {
+    --player-height: 75px;
+}
+#controls {
+    position: fixed;
+    bottom: 0px;
+    height: var(--player-height);
+    width: 100vw;
+    background-color: #fff;
+    display: flex;
+    justify-content: space-between;
+}
+#controls > div {
+    width: 33.33%;
+    max-width: 385px;
+}
+#progress-container {
+    display: block;
+    position: absolute;
+    top: -4px;
+    height: 4px;
+    width: 100vw;
+    background-color: #777;
+}
+#progress {
+    height: 100%;
+    width: 0%;
+    background-color: #ff9f3f;
+}
+#left-controls {
+    display: flex;
+}
+#left-controls img {
+    height: 100%;
+}
+#left-controls > div {
+    margin-left: 10px;
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+}
+#controls-song-title {
+    font-weight: 600;
+    font-size: 1.05em;
+    margin-bottom: 2px;
+}
+#controls-song-artist {
+    margin-top: 2px;
+    font-size: 0.925em;
+}
+#main-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.skip {
+    font-size: 28px;
+    margin: 0px 12px;
+}
+#pause-play {
+    font-size: 48px;
+}
+#right-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+#right-controls > div {
+    width: 65%;
+    display: flex;
+    align-items: center;
+    max-width: 220px;
+}
+#right-controls > div > i {
+    margin-right: 10px;
+}
+#volume-slider-container {
+    width: 80%;
+    height: 8px;
+    border-radius: 4px;
+    background-color: #777;
+    cursor: pointer;
+}
+#volume-slider {
+    height: 100%;
+    width: 100%;
+    transition: width 0.1s;
+    border-radius: 4px;
+    background-color: #ff9f3f;
+    cursor: pointer;
 }
