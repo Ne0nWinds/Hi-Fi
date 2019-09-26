@@ -353,13 +353,28 @@ api.get('/stream/:id', async (request, response) => {
         response.status(404).end();
         return;
     }
-    response.set('content-type', 'video/mp4');
+    response.set('content-type', 'audio/mp4');
     response.set('accept-ranges', 'bytes');
 
     let bucket = new mongodb.GridFSBucket(db, {bucketName: 'songs'});
 
     let downloadStream;
-    downloadStream = bucket.openDownloadStream(DataID);
+    if (request.headers.range) {
+        response.writeHead(206);
+        let range_header = request.headers.range
+            .replace('bytes=', '')
+            .split('-');
+        let [start, end] = [
+            parseInt(range_header[0]),
+            parseInt(range_header[1]) + 1,
+        ];
+        let dlRequest = {start};
+        if (end != '') dlRequest.end = end;
+        console.log(dlRequest);
+        downloadStream = bucket.openDownloadStream(DataID, dlRequest);
+    } else {
+        downloadStream = bucket.openDownloadStream(DataID);
+    }
 
     downloadStream.on('data', chunk => response.write(chunk));
 
@@ -379,35 +394,34 @@ api.get('/mpd/:id', async (request, response) => {
         return;
     }
     response.set('content-type', 'application/dash+xml');
-    let output = `
-<?xml version="1.0" encoding="UTF-8"?>
-<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" minBufferTime="PT5S" type="static" mediaPresentationDuration="PT506.8016357421875S">
+    let output = `<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" minBufferTime="PT10S" type="static">
   <Period id="0">
     <AdaptationSet id="0" contentType="audio" subsegmentAlignment="true">
-      <Representation id="0" bandwidth="134948" codecs="mp4a.40.2" mimeType="audio/mp4" audioSamplingRate="44100">
+      <Representation id="0" bandwidth="101174" codecs="mp4a.40.2" mimeType="audio/mp4">
         <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
-            <BaseURL>/stream/${songInDb.dataIDs['96k']}</BaseURL>
-        <SegmentBase indexRange="822-${songInDb.indexRange}" timescale="44100">
+            <BaseURL>/api/stream/${songInDb.dataIDs['96k']}</BaseURL>
+        <SegmentBase indexRange="822-${songInDb.indexRange}">
           <Initialization range="0-821"/>
         </SegmentBase>
       </Representation>
-      <Representation id="1" bandwidth="350000" codecs="mp4a.40.2" mimeType="audio/mp4" audioSamplingRate="44100">
+      <Representation id="1" bandwidth="135607" codecs="mp4a.40.2" mimeType="audio/mp4">
         <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
-            <BaseURL>/stream/${songInDb.dataIDs['128k']}</BaseURL>
-        <SegmentBase indexRange="822-${songInDb.indexRange}" timescale="44100">
+            <BaseURL>/api/stream/${songInDb.dataIDs['128k']}</BaseURL>
+        <SegmentBase indexRange="822-${songInDb.indexRange}">
           <Initialization range="0-821"/>
         </SegmentBase>
       </Representation>
-      <Representation id="2" bandwidth="700000" codecs="mp4a.40.2" mimeType="audio/mp4" audioSamplingRate="44100">
+      <Representation id="2" bandwidth="197393" codecs="mp4a.40.2" mimeType="audio/mp4">
         <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
-            <BaseURL>/stream/${songInDb.dataIDs['192k']}</BaseURL>
-        <SegmentBase indexRange="822-${songInDb.indexRange}" timescale="44100">
+            <BaseURL>/api/stream/${songInDb.dataIDs['192k']}</BaseURL>
+        <SegmentBase indexRange="822-${songInDb.indexRange}">
           <Initialization range="0-821"/>
         </SegmentBase>
       </Representation>
     </AdaptationSet>
   </Period>
-</MPD> `;
+</MPD>`;
     response.send(output);
 });
 
