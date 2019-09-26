@@ -229,6 +229,9 @@ class WebPlayer extends React.Component {
         };
         this.contextMenuSongID = '';
         this.audio = new Audio();
+        this.player = dashjs.MediaPlayer().create();
+        this.player.initialize(this.audio);
+        this.pauseplaybtn = document.getElementById('pause-play')
     }
 
     handleAPICalls = async () => {
@@ -308,12 +311,14 @@ class WebPlayer extends React.Component {
     };
 
     playSong = (songObj, artID = null) => {
+        this.audio.pause();
+        this.audio.currentTime = 0.0;
+
         document.getElementById('controls-song-title').innerText =
             songObj.title;
         document.getElementById('controls-song-artist').innerText =
             songObj.artist;
         if (artID != null) {
-            console.log('attempt');
             document.getElementById('left-controls-album-cover').src =
                 '/api/image/view/' + artID;
         } else {
@@ -324,6 +329,7 @@ class WebPlayer extends React.Component {
                         '/api/image/view/' + response.data.artID;
             });
         }
+        this.player.attachSource('/api/mpd/' + songObj._id);
     };
 
     componentWillUnMount() {
