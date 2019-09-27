@@ -289,6 +289,7 @@ api.post(
         } catch (err) {
             return response.status(400).json(err);
         }
+        newSong.duration = parseInt(newSong.duration);
 
         request.files.sort((a, b) => a.size > b.size); // sort least to greatest
 
@@ -342,12 +343,10 @@ api.post(
 );
 
 api.get('/stream/:id', async (request, response) => {
-    let DataID;
+    let DataID, songInDb;
     try {
         DataID = new ObjectID(request.params.id);
-        let songInDb = await db
-            .collection('songs.files')
-            .findOne({_id: DataID});
+        songInDb = await db.collection('songs.files').findOne({_id: DataID});
         if (songInDb == null) throw 'Not found';
     } catch (err) {
         response.status(404).end();
@@ -360,7 +359,6 @@ api.get('/stream/:id', async (request, response) => {
 
     let downloadStream;
     if (request.headers.range) {
-        response.writeHead(206);
         let range_header = request.headers.range
             .replace('bytes=', '')
             .split('-');
@@ -368,11 +366,19 @@ api.get('/stream/:id', async (request, response) => {
             parseInt(range_header[0]),
             parseInt(range_header[1]) + 1,
         ];
-        let dlRequest = {start};
-        if (end != '') dlRequest.end = end;
-        console.log(dlRequest);
+        let dlRequest = {start, end};
+        response.writeHead(206, {
+            'content-type': 'audio/mp4',
+            'accept-ranges': 'bytes',
+            'content-range':
+                'bytes ' + start + '-' + end + '/' + songInDb.length,
+        });
         downloadStream = bucket.openDownloadStream(DataID, dlRequest);
     } else {
+        response.writeHead(200, {
+            'content-type': 'audio/mp4',
+            'accept-ranges': 'bytes',
+        });
         downloadStream = bucket.openDownloadStream(DataID);
     }
 
@@ -395,7 +401,7 @@ api.get('/mpd/:id', async (request, response) => {
     }
     response.set('content-type', 'application/dash+xml');
     let output = `<?xml version="1.0" encoding="UTF-8"?>
-<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" minBufferTime="PT10S" type="static">
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:mpeg:dash:schema:mpd:2011 DASH-MPD.xsd" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011" minBufferTime="PT10S" type="static" mediaPresentationDuration="PT${songInDb.duration}S">
   <Period id="0">
     <AdaptationSet id="0" contentType="audio" subsegmentAlignment="true">
       <Representation id="0" bandwidth="101174" codecs="mp4a.40.2" mimeType="audio/mp4">

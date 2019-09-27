@@ -15,7 +15,7 @@ const songSchema = joi.object({
         .required(),
     duration: joi
         .string()
-        .regex(/[1-9]{0,1}\d:[0-5]\d/)
+        .regex(/\d+\.\d+/)
         .required(),
     dataIDs: joi.object({
         '96k': joi.string(),

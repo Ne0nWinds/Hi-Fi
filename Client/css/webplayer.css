@@ -232,3 +232,6 @@
     background-color: #ff9f3f;
     cursor: pointer;
 }
+#controls i {
+    cursor: pointer;
+}

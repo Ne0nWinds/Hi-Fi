@@ -183,7 +183,11 @@ class SongSet extends React.Component {
                                             {s.artist}
                                         </p>
                                         <p class="song-col song-col-time">
-                                            {s.duration}
+                                            {Math.floor(s.duration / 60)}:
+                                            {Math.round(s.duration % 60) > 9
+                                                ? ''
+                                                : '0'}
+                                            {Math.round(s.duration % 60)}
                                         </p>
                                     </div>
                                 );
@@ -231,7 +235,9 @@ class WebPlayer extends React.Component {
         this.audio = new Audio();
         this.player = dashjs.MediaPlayer().create();
         this.player.initialize(this.audio);
-        this.pauseplaybtn = document.getElementById('pause-play')
+        this.pauseplaybtn = null;
+        this.progress = null;
+        this.interval = null;
     }
 
     handleAPICalls = async () => {
@@ -267,19 +273,41 @@ class WebPlayer extends React.Component {
     };
 
     async componentDidMount() {
+        // event listeners for context menu removal
+        window.addEventListener('resize', this.hideContextMenu);
+
         // sidebar queries
         let response, body;
-        body = new FormData();
-        body.append('playlists', this.props.user.playlists.join(','));
-        response = await axios.post('/api/playlist/view', body);
-        this.setState({playlists: response.data});
+        if (this.props.user.playlists.length > 0) {
+            body = new FormData();
+            body.append('playlists', this.props.user.playlists.join(','));
+            response = await axios.post('/api/playlist/view', body);
+            this.setState({playlists: response.data});
+        }
 
         // main queries
         await this.handleAPICalls();
         this.setState({serverResponded: true});
 
-        // event listeners for context menu removal
-        window.addEventListener('resize', this.hideContextMenu);
+        // controls
+        this.pauseplaybtn = document.getElementById('pause-play');
+        this.progress = document.getElementById('progress');
+        this.volumeSliderContainer = document.getElementById(
+            'volume-slider-container',
+        );
+        this.volumeSlider = document.getElementById('volume-slider');
+        window.addEventListener('keydown', e => {
+            switch (e.key) {
+                case 'ArrowUp':
+                    this.setVolume(this.audio.volume + 0.05);
+                    break;
+                case 'ArrowDown':
+                    this.setVolume(this.audio.volume - 0.05);
+                    break;
+                case ' ':
+                    this.handlePausePlay();
+            }
+        });
     }
 
     async getSnapshotBeforeUpdate(prevProps, prevState) {
@@ -310,6 +338,15 @@ class WebPlayer extends React.Component {
         cm.style.top = '0px';
     };
 
+    readDuration = () => {
+        let percent = (
+            (this.audio.currentTime / this.audio.duration) *
+            100
+        ).toFixed(2);
+        this.progress.style.width = percent + '%';
+        this.interval = requestAnimationFrame(this.readDuration);
+    };
+
     playSong = (songObj, artID = null) => {
         this.audio.pause();
         this.audio.currentTime = 0.0;
@@ -330,6 +367,40 @@ class WebPlayer extends React.Component {
             });
         }
         this.player.attachSource('/api/mpd/' + songObj._id);
+        this.pauseplaybtn.innerHTML = '&#xf28c';
+        this.readDuration();
+    };
+
+    handlePausePlay = () => {
+        if (this.player.isPaused()) {
+            this.player.play();
+            this.pauseplaybtn.innerHTML = '&#xf28c';
+            this.readDuration();
+        } else {
+            this.player.pause();
+            this.pauseplaybtn.innerHTML = '&#xf01d';
+            cancelAnimationFrame(this.interval);
+        }
+    };
+
+    handleVolumeChange = e => {
+        e.persist();
+        if (e.type == 'click')
+            this.setVolume(
+                e.nativeEvent.offsetX / this.volumeSliderContainer.offsetWidth,
+            );
+        else if (e.type == 'onmousemove' && e.buttons == 1)
+            this.setVolume(
+                e.nativeEvent.offsetX / this.volumeSliderContainer.offsetWidth,
+            );
+    };
+
+    setVolume = amount => {
+        amount = Math.max(0, amount);
+        amount = Math.min(1, amount);
+        console.log(amount);
+        this.player.setVolume(amount);
+        this.volumeSlider.style.width = amount * 100 + '%';
     };
 
     componentWillUnMount() {
@@ -406,7 +477,10 @@ class WebPlayer extends React.Component {
                             </div>
                             <div id="main-controls">
                                 <i class="fa skip">&#xf049;</i>
-                                <i class="fa" id="pause-play">
+                                <i
+                                    class="fa"
+                                    id="pause-play"
+                                    onClick={this.handlePausePlay}>
                                     &#xf01d;
                                 </i>
                                 <i class="fa skip">&#xf050;</i>
@@ -414,7 +488,10 @@ class WebPlayer extends React.Component {
                             <div id="right-controls">
                                 <div>
                                     <i class="fa">&#xf028;</i>
-                                    <div id="volume-slider-container">
+                                    <div
+                                        onClick={this.handleVolumeChange}
+                                        onMouseMove={this.handleVolumeChange}
+                                        id="volume-slider-container">
                                         <div id="volume-slider"></div>
                                     </div>
                                 </div>
