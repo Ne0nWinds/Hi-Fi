@@ -248,7 +248,26 @@ api.post(
                 .collection('playlists')
                 .findOneAndUpdate(
                     {_id: new ObjectID(request.body.playlistID)},
-                    {$addToSet: {songs: new ObjectID(request.body.songID)}},
+                    {$push: {songs: new ObjectID(request.body.songID)}},
+                );
+            response.json({msg: 'Playlist Updated Successfully'});
+        } catch (err) {
+            response.status(400).json({msg: 'Invalid Playlist ID'});
+        }
+    },
+);
+
+api.post(
+    '/playlist/removeSong/',
+    multer({storage: multer.memoryStorage()}).none(),
+    async (request, response) => {
+        console.log(request.body);
+        try {
+            let playlist = await db
+                .collection('playlists')
+                .findOneAndUpdate(
+                    {_id: new ObjectID(request.body.playlistID)},
+                    {$pull: {songs: new ObjectID(request.body.songID)}},
                 );
             response.json({msg: 'Playlist Updated Successfully'});
         } catch (err) {
@@ -290,6 +309,34 @@ api.post(
         }
     },
 );
+
+api.get('/playlist/delete/:id', async (request, response) => {
+    if (!request.session.user) {
+        response.json({msg: 'Not Logged In'});
+        return;
+    }
+    try {
+        let playlistID = new ObjectID(request.params.id);
+        let playlist = await db
+            .collection('playlists')
+            .findOne({_id: playlistID});
+        if (playlist.creatorID == request.session.user) {
+            await db
+                .collection('playlists')
+                .findOneAndDelete({_id: playlistID});
+            await db
+                .collection('users')
+                .findOneAndUpdate(
+                    {_id: new ObjectID(request.session.user)},
+                    {$pull: {playlists: playlistID}},
+                );
+        } else {
+            response.status(400).end();
+        }
+    } catch (err) {
+        response.status(400).json({msg: 'Invalid Playlist ID'});
+    }
+});
 
 // song upload/streaming/info
 api.post(
@@ -543,10 +590,10 @@ api.get('/album/get/:id', async (request, response) => {
     let id;
     try {
         id = new ObjectID(request.params.id);
+        response.json(await db.collection('albums').findOne({_id: id}));
     } catch (err) {
         response.status(400).json({msg: 'Invalid Track ID'});
     }
-    response.json(await db.collection('albums').findOne({_id: id}));
 });
 
 api.get('/albums/get', async (request, response) => {

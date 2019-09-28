@@ -76,9 +76,15 @@ const ContextMenu = props => {
                 <li onClick={props.addToStartOfQueue}>Play Next</li>
                 <li onClick={props.addToEndOfQueue}>Add To Queue</li>
                 <hr />
-                <li>Go To Album</li>
-                <hr />
-                <li>Add To Library</li>
+                {props.isAlbum ? '' : <li>Go To Album</li>}
+                {props.isAlbum ? (
+                    ''
+                ) : (
+                    <li onClick={props.removeFromPlaylist}>
+                        Remove From Playlist
+                    </li>
+                )}
+                {props.isAlbum ? '' : <hr />}
                 {props.playlists.map(p => (
                     <li id={p._id} onClick={addToPlaylist}>
                         {'Add To ' + p.title}
@@ -171,6 +177,9 @@ class SongSet extends React.Component {
             this.props.playNextInQueue();
         }
     };
+    deletePlaylist = () => {
+        this.props.deletePlaylist(this.props.set._id);
+    };
     render() {
         return (
             <div>
@@ -203,6 +212,13 @@ class SongSet extends React.Component {
                                         : 'No description'}
                                 </p>
                                 <button onClick={this.playSong}>Play</button>
+                                {this.props.deletePlaylist ? (
+                                    <button onClick={this.deletePlaylist}>
+                                        Delete
+                                    </button>
+                                ) : (
+                                    ''
+                                )}
                             </div>
                         </div>
                         <div id="songset-tracklist">
@@ -284,8 +300,6 @@ class WebPlayer extends React.Component {
         this.audio = new Audio();
         this.player = dashjs.MediaPlayer().create();
         this.player.initialize(this.audio);
-        this.pauseplaybtn = null;
-        this.progress = null;
         this.interval = null;
         this.queue = [];
     }
@@ -302,9 +316,17 @@ class WebPlayer extends React.Component {
             return new Promise(async (resolve, reject) => {
                 let response, songset;
 
-                if (url[0] == 'album')
-                    response = await axios.get('/api/album/get/' + url[1]);
-                else response = await axios.get('/api/playlist/view/' + url[1]);
+                try {
+                    if (url[0] == 'album')
+                        response = await axios.get('/api/album/get/' + url[1]);
+                    else
+                        response = await axios.get(
+                            '/api/playlist/view/' + url[1],
+                        );
+                } catch (err) {
+                    this.setState({redirectHome: true, serverResponded: true});
+                    return;
+                }
                 songset = {songs: [], ...response.data};
                 let songs = response.data.songs.join(',');
                 let body = new FormData();
@@ -340,8 +362,6 @@ class WebPlayer extends React.Component {
         this.setState({serverResponded: true});
 
         // controls
-        this.pauseplaybtn = document.getElementById('pause-play');
-        this.progress = document.getElementById('progress');
         this.volumeSliderContainer = document.getElementById(
             'volume-slider-container',
         );
@@ -362,6 +382,7 @@ class WebPlayer extends React.Component {
                     this.hidePlaylistMenu();
             }
         });
+        this.progress = document.getElementById('progress');
     }
 
     async getSnapshotBeforeUpdate(prevProps, prevState) {
@@ -380,7 +401,12 @@ class WebPlayer extends React.Component {
         if (x + cm.offsetWidth < window.innerWidth) cm.style.left = x + 'px';
         else cm.style.left = x - cm.offsetWidth + 'px';
 
-        if (y + cm.offsetHeight < window.innerHeight) cm.style.top = y + 'px';
+        if (
+            y + cm.offsetHeight <
+            window.innerHeight -
+                document.getElementById('controls').offsetHeight
+        )
+            cm.style.top = y + 'px';
         else cm.style.top = y - cm.offsetHeight + 'px';
         this.contextMenuSong = song;
     };
@@ -393,6 +419,7 @@ class WebPlayer extends React.Component {
     };
 
     readDuration = () => {
+        if (!this.progress) progress = document.getElementById('progress');
         let percent = (
             (this.audio.currentTime / this.audio.duration) *
             100
@@ -409,11 +436,12 @@ class WebPlayer extends React.Component {
         this.queue = queue;
     };
     playNextInQueue = (artID = null) => {
+        const pauseplaybtn = document.getElementById('pause-play');
         this.audio.pause();
         this.audio.currentTime = 0.0;
 
         if (this.queue.length == 0) {
-            this.pauseplaybtn.innerHTML = '&#xf01d';
+            pauseplaybtn.innerHTML = '&#xf01d';
             return;
         }
         document.getElementById(
@@ -439,24 +467,27 @@ class WebPlayer extends React.Component {
         }
         this.player.attachSource('/api/mpd/' + this.queue[0]._id);
         this.queue = this.queue.slice(1, this.queue.length);
-        this.pauseplaybtn.innerHTML = '&#xf28c';
+        pauseplaybtn.innerHTML = '&#xf28c';
         this.readDuration();
     };
     addToStartOfQueue = () => {
         this.queue = [this.contextMenuSong, ...this.queue];
+        if (this.queue.length == 1) this.playNextInQueue();
     };
     addToEndOfQueue = song => {
         this.queue.push(this.contextMenuSong);
+        if (this.queue.length == 1) this.playNextInQueue();
     };
 
     handlePausePlay = () => {
+        const pauseplaybtn = document.getElementById('pause-play');
         if (this.player.isPaused()) {
             this.player.play();
-            this.pauseplaybtn.innerHTML = '&#xf28c';
+            pauseplaybtn.innerHTML = '&#xf28c';
             this.readDuration();
         } else {
             this.player.pause();
-            this.pauseplaybtn.innerHTML = '&#xf01d';
+            pauseplaybtn.innerHTML = '&#xf01d';
             cancelAnimationFrame(this.interval);
         }
     };
@@ -484,12 +515,22 @@ class WebPlayer extends React.Component {
         window.removeEventListener('resize', this.hideContextMenu, true);
     }
 
-    // playlist management
+    // context Menu
     addToPlaylist = async playlistID => {
         let body = new FormData();
         body.append('songID', this.contextMenuSong._id);
         body.append('playlistID', playlistID);
         let response = await axios.post('/api/playlist/addsong', body);
+    };
+
+    removeFromPlaylist = async () => {
+        let body = new FormData();
+        body.append('songID', this.contextMenuSong._id);
+        body.append('playlistID', this.state.currentSongSet._id);
+        try {
+            let response = await axios.post('/api/playlist/removeSong', body);
+            await this.handleAPICalls();
+        } catch (err) {}
     };
 
     // new playlist menu
@@ -504,7 +545,23 @@ class WebPlayer extends React.Component {
         this.overlayOpen = false;
     };
 
+    deletePlaylist = async () => {
+        this.setState({
+            playlists: this.state.playlists.filter(
+                p => p._id != this.state.currentSongSet._id,
+            ),
+        });
+        this.setState({redirectHome: true});
+        let response = await axios.get(
+            '/api/playlist/delete/' + this.state.currentSongSet._id,
+        );
+    };
+
     render() {
+        if (this.state.redirectHome) {
+            this.setState({redirectHome: false});
+            return <Redirect to="/" />;
+        }
         return (
             <div>
                 {this.state.serverResponded ? (
@@ -548,13 +605,16 @@ class WebPlayer extends React.Component {
                                         showContextMenu={this.showContextMenu}
                                         setQueue={this.setQueue}
                                         playNextInQueue={this.playNextInQueue}
+                                        deletePlaylist={this.deletePlaylist}
                                     />
                                 )}
                             />
                         </Switch>
                         <ContextMenu
+                            isAlbum={this.state.currentSongSet.isAlbum}
                             playlists={this.state.playlists}
                             addToPlaylist={this.addToPlaylist}
+                            removeFromPlaylist={this.removeFromPlaylist}
                             addToStartOfQueue={this.addToStartOfQueue}
                             addToEndOfQueue={this.addToEndOfQueue}
                         />
