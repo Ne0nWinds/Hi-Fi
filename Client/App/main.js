@@ -115,11 +115,18 @@ class SongSet extends React.Component {
     playSong = e => {
         e.persist();
         let id = e.target.id || e.target.parentElement.id;
-        let song = this.props.set.songs.find(i => i._id == id);
+        let queue = [];
+        let allSongs = this.props.set.songs;
+        for (let i = 0; i < allSongs.length; i++) {
+            if (queue.length > 0 || allSongs[i]._id == id) {
+                queue.push(allSongs[i]);
+            }
+        }
+        this.props.setQueue(queue);
         if (this.props.set.isAlbum) {
-            this.props.playSong(song, this.props.set.artID);
+            this.props.playNextInQueue(this.props.set.artID);
         } else {
-            this.props.playSong(song);
+            this.props.playNextInQueue();
         }
     };
     render() {
@@ -238,6 +245,7 @@ class WebPlayer extends React.Component {
         this.pauseplaybtn = null;
         this.progress = null;
         this.interval = null;
+        this.queue = [];
     }
 
     handleAPICalls = async () => {
@@ -306,7 +314,9 @@ class WebPlayer extends React.Component {
                     break;
                 case ' ':
                     this.handlePausePlay();
+                    break;
             }
+            this.hideContextMenu();
         });
     }
 
@@ -343,30 +353,46 @@ class WebPlayer extends React.Component {
             (this.audio.currentTime / this.audio.duration) *
             100
         ).toFixed(2);
-        this.progress.style.width = percent + '%';
+        if (isFinite(percent)) { // edge case of NaN
+            this.progress.style.width = percent + '%';
+            if (percent >= 100) this.playNextInQueue();
+        }
         this.interval = requestAnimationFrame(this.readDuration);
     };
 
-    playSong = (songObj, artID = null) => {
+    setQueue = (queue = []) => {
+        this.queue = queue;
+    };
+    playNextInQueue = (artID = null) => {
         this.audio.pause();
         this.audio.currentTime = 0.0;
 
-        document.getElementById('controls-song-title').innerText =
-            songObj.title;
-        document.getElementById('controls-song-artist').innerText =
-            songObj.artist;
+        if (this.queue.length == 0) {
+            this.pauseplaybtn.innerHTML = '&#xf01d';
+            return;
+        }
+        document.getElementById(
+            'controls-song-title',
+        ).innerText = this.queue[0].title;
+        document.getElementById(
+            'controls-song-artist',
+        ).innerText = this.queue[0].artist;
         if (artID != null) {
             document.getElementById('left-controls-album-cover').src =
                 '/api/image/view/' + artID;
         } else {
             document.getElementById('left-controls-album-cover').src = '';
-            axios.get('/api/album/get/' + songObj.albumID).then(response => {
-                if (response.status == 200)
-                    document.getElementById('left-controls-album-cover').src =
-                        '/api/image/view/' + response.data.artID;
-            });
+            axios
+                .get('/api/album/get/' + this.queue[0].albumID)
+                .then(response => {
+                    if (response.status == 200)
+                        document.getElementById(
+                            'left-controls-album-cover',
+                        ).src = '/api/image/view/' + response.data.artID;
+                });
         }
-        this.player.attachSource('/api/mpd/' + songObj._id);
+        this.player.attachSource('/api/mpd/' + this.queue[0]._id);
+        this.queue = this.queue.slice(1, this.queue.length);
         this.pauseplaybtn.innerHTML = '&#xf28c';
         this.readDuration();
     };
@@ -444,7 +470,8 @@ class WebPlayer extends React.Component {
                                         set={this.state.currentSongSet}
                                         loaded={this.state.songSetLoaded}
                                         showContextMenu={this.showContextMenu}
-                                        playSong={this.playSong}
+                                        setQueue={this.setQueue}
+                                        playNextInQueue={this.playNextInQueue}
                                     />
                                 )}
                             />
