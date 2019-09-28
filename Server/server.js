@@ -128,7 +128,7 @@ api.get('/logout', (request, response) => {
 // creating/managing playlists
 api.post(
     '/playlist/new',
-    multer({storage: multer.memoryStorage()}).none(),
+    multer({storage: multer.memoryStorage()}).single('image'),
     async (request, response) => {
         if (!request.session.user) {
             response.json({msg: 'Not Logged In'});
@@ -136,6 +136,7 @@ api.post(
         }
         if (!request.body.title) {
             response.json({msg: 'No title provided'});
+            return;
         }
         let b = request.body;
         let data = {
@@ -161,9 +162,39 @@ api.post(
                     {_id: new ObjectID(request.session.user)},
                     {$push: {playlists: newPlaylist._id}},
                 );
-            response.status(201).json(newPlaylist);
         } catch (err) {
             response.status(500).json(err);
+        }
+        if (request.file) {
+            const readable = new Readable();
+            readable.push(request.file.buffer);
+            readable.push(null);
+            let bucket = new mongodb.GridFSBucket(db, {bucketName: 'images'});
+
+            let uploadStream = bucket.openUploadStream(request.body.title);
+            let artID = uploadStream.id;
+            readable.pipe(uploadStream);
+
+            uploadStream.on('error', () => {
+                return response.status(500).json({msg: 'Error Uploading File'});
+            });
+
+            uploadStream.on('finish', async () => {
+                try {
+                    let data = await db
+                        .collection('playlists')
+                        .findOneAndUpdate(
+                            {_id: new ObjectID(newPlaylist._id)},
+                            {$set: {artID}},
+                        );
+                    response.json(newPlaylist);
+                } catch (err) {
+                    console.log(err);
+                    response.json(newPlaylist);
+                }
+            });
+        } else {
+            response.json(newPlaylist);
         }
     },
 );

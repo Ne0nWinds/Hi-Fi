@@ -10,6 +10,10 @@ input::selection {
     color: white;
     background-color: #222;
 }
+textarea::selection {
+    color: white;
+    background-color: #222;
+}
 @keyframes fadein {
     from {
         opacity: 0;

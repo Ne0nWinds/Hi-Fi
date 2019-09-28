@@ -45,7 +45,7 @@ const Sidebar = props => (
             </Link>
         </ul>
         <ul>
-            <li>New Playlist</li>
+            <li onClick={props.showPlaylistMenu}>New Playlist</li>
             {props.playlists.map(p => (
                 <Link to={'/playlist/' + p._id}>
                     <li to={'/playlist/' + p._id}>{p.title}</li>
@@ -73,8 +73,8 @@ const ContextMenu = props => {
     return (
         <div id="playlistcontextmenu">
             <ul>
-                <li>Play Next</li>
-                <li>Add To Queue</li>
+                <li onClick={props.addToStartOfQueue}>Play Next</li>
+                <li onClick={props.addToEndOfQueue}>Add To Queue</li>
                 <hr />
                 <li>Go To Album</li>
                 <hr />
@@ -85,6 +85,43 @@ const ContextMenu = props => {
                     </li>
                 ))}
             </ul>
+        </div>
+    );
+};
+const NewPlaylistMenu = props => {
+    const handleSubmit = async e => {
+        e.preventDefault();
+        e.persist();
+        let form = e.nativeEvent.target;
+        let body = new FormData();
+        body.append(
+            'title',
+            form.name.value == '' ? 'New Playlist' : form.name.value,
+        );
+        body.append('description', form.description.value);
+        if (form[2].files[0])
+            body.append('image', form[2].files[0], form[2].files[0].name);
+        let newPlaylist = await axios.post('/api/playlist/new', body);
+        console.log(newPlaylist);
+        props.hidePlaylistMenu();
+    };
+    return (
+        <div id="overlay" onClick={props.hidePlaylistMenu}>
+            <div id="create-new-playlist">
+                <h1>New Playlist</h1>
+                <img src="/img/new_playlist.svg" />
+                <form onSubmit={handleSubmit}>
+                    <h2>Name</h2>
+                    <input type="text" name="name" />
+                    <h2>Description</h2>
+                    <textarea name="description"></textarea>
+                    <label for="file" id="file-label">
+                        Choose A Cover Photo <span class="fa">&#xf019;</span>
+                    </label>
+                    <input type="file" name="file" id="file" />
+                    <button>Create</button>
+                </form>
+            </div>
         </div>
     );
 };
@@ -110,16 +147,21 @@ class SongSet extends React.Component {
         e.preventDefault();
         e.persist();
         let id = e.target.id || e.target.parentElement.id;
-        this.props.showContextMenu(id, e.pageX, e.pageY);
+        let song = this.props.set.songs.find(s => s._id == id);
+        this.props.showContextMenu(song, e.pageX, e.pageY);
     };
     playSong = e => {
         e.persist();
         let id = e.target.id || e.target.parentElement.id;
-        let queue = [];
-        let allSongs = this.props.set.songs;
-        for (let i = 0; i < allSongs.length; i++) {
-            if (queue.length > 0 || allSongs[i]._id == id) {
-                queue.push(allSongs[i]);
+        let queue = new Array();
+        if (!id) {
+            queue = this.props.set.songs;
+        } else {
+            let allSongs = this.props.set.songs;
+            for (let i = 0; i < allSongs.length; i++) {
+                if (queue.length > 0 || allSongs[i]._id == id) {
+                    queue.push(allSongs[i]);
+                }
             }
         }
         this.props.setQueue(queue);
@@ -160,7 +202,7 @@ class SongSet extends React.Component {
                                         ? this.props.set.description
                                         : 'No description'}
                                 </p>
-                                <button>Play</button>
+                                <button onClick={this.playSong}>Play</button>
                             </div>
                         </div>
                         <div id="songset-tracklist">
@@ -238,7 +280,7 @@ class WebPlayer extends React.Component {
             songSetLoaded: false,
             serverResponded: false,
         };
-        this.contextMenuSongID = '';
+        this.contextMenuSong = '';
         this.audio = new Audio();
         this.player = dashjs.MediaPlayer().create();
         this.player.initialize(this.audio);
@@ -313,10 +355,12 @@ class WebPlayer extends React.Component {
                     this.setVolume(this.audio.volume - 0.05);
                     break;
                 case ' ':
-                    this.handlePausePlay();
+                    if (!this.overlayOpen) this.handlePausePlay();
                     break;
+                case 'Escape':
+                    this.hideContextMenu();
+                    this.hidePlaylistMenu();
             }
-            this.hideContextMenu();
         });
     }
 
@@ -328,7 +372,7 @@ class WebPlayer extends React.Component {
     }
 
     // context menu
-    showContextMenu = (id, x, y) => {
+    showContextMenu = (song, x, y) => {
         let cm = document.getElementById('playlistcontextmenu');
         cm.style.visibility = 'visible';
         cm.style.position = 'absolute';
@@ -338,11 +382,11 @@ class WebPlayer extends React.Component {
 
         if (y + cm.offsetHeight < window.innerHeight) cm.style.top = y + 'px';
         else cm.style.top = y - cm.offsetHeight + 'px';
-        this.contextMenuSongID = id;
+        this.contextMenuSong = song;
     };
     hideContextMenu = () => {
         let cm = document.getElementById('playlistcontextmenu');
-        this.contextMenuSongID = '';
+        this.contextMenuSong = null;
         cm.style.visibility = 'hidden';
         cm.style.left = '0px';
         cm.style.top = '0px';
@@ -353,7 +397,8 @@ class WebPlayer extends React.Component {
             (this.audio.currentTime / this.audio.duration) *
             100
         ).toFixed(2);
-        if (isFinite(percent)) { // edge case of NaN
+        if (isFinite(percent)) {
+            // edge case of NaN
             this.progress.style.width = percent + '%';
             if (percent >= 100) this.playNextInQueue();
         }
@@ -377,7 +422,7 @@ class WebPlayer extends React.Component {
         document.getElementById(
             'controls-song-artist',
         ).innerText = this.queue[0].artist;
-        if (artID != null) {
+        if (artID != null && !artID.type) {
             document.getElementById('left-controls-album-cover').src =
                 '/api/image/view/' + artID;
         } else {
@@ -389,12 +434,19 @@ class WebPlayer extends React.Component {
                         document.getElementById(
                             'left-controls-album-cover',
                         ).src = '/api/image/view/' + response.data.artID;
-                });
+                })
+                .catch(err => console.log(err));
         }
         this.player.attachSource('/api/mpd/' + this.queue[0]._id);
         this.queue = this.queue.slice(1, this.queue.length);
         this.pauseplaybtn.innerHTML = '&#xf28c';
         this.readDuration();
+    };
+    addToStartOfQueue = () => {
+        this.queue = [this.contextMenuSong, ...this.queue];
+    };
+    addToEndOfQueue = song => {
+        this.queue.push(this.contextMenuSong);
     };
 
     handlePausePlay = () => {
@@ -424,7 +476,6 @@ class WebPlayer extends React.Component {
     setVolume = amount => {
         amount = Math.max(0, amount);
         amount = Math.min(1, amount);
-        console.log(amount);
         this.player.setVolume(amount);
         this.volumeSlider.style.width = amount * 100 + '%';
     };
@@ -436,9 +487,21 @@ class WebPlayer extends React.Component {
     // playlist management
     addToPlaylist = async playlistID => {
         let body = new FormData();
-        body.append('songID', this.contextMenuSongID);
+        body.append('songID', this.contextMenuSong._id);
         body.append('playlistID', playlistID);
         let response = await axios.post('/api/playlist/addsong', body);
+    };
+
+    // new playlist menu
+    showPlaylistMenu = () => {
+        document.getElementById('overlay').style.visibility = 'visible';
+        this.overlayOpen = true;
+    };
+    hidePlaylistMenu = (e = null) => {
+        if (e) e.persist();
+        if (e == null || e.target.id == 'overlay')
+            document.getElementById('overlay').style.visibility = 'hidden';
+        this.overlayOpen = false;
     };
 
     render() {
@@ -449,6 +512,7 @@ class WebPlayer extends React.Component {
                         <Sidebar
                             email={this.state.email}
                             playlists={this.state.playlists}
+                            showPlaylistMenu={this.showPlaylistMenu}
                         />
                         <Switch>
                             <Route
@@ -482,7 +546,8 @@ class WebPlayer extends React.Component {
                                         set={this.state.currentSongSet}
                                         loaded={this.state.songSetLoaded}
                                         showContextMenu={this.showContextMenu}
-                                        playSong={this.playSong}
+                                        setQueue={this.setQueue}
+                                        playNextInQueue={this.playNextInQueue}
                                     />
                                 )}
                             />
@@ -490,6 +555,12 @@ class WebPlayer extends React.Component {
                         <ContextMenu
                             playlists={this.state.playlists}
                             addToPlaylist={this.addToPlaylist}
+                            addToStartOfQueue={this.addToStartOfQueue}
+                            addToEndOfQueue={this.addToEndOfQueue}
+                        />
+                        <NewPlaylistMenu
+                            createNewPlaylist={this.createNewPlaylist}
+                            hidePlaylistMenu={this.hidePlaylistMenu}
                         />
                         <div id="controls">
                             <span id="progress-container">
@@ -510,7 +581,11 @@ class WebPlayer extends React.Component {
                                     onClick={this.handlePausePlay}>
                                     &#xf01d;
                                 </i>
-                                <i class="fa skip">&#xf050;</i>
+                                <i
+                                    onClick={this.playNextInQueue}
+                                    class="fa skip">
+                                    &#xf050;
+                                </i>
                             </div>
                             <div id="right-controls">
                                 <div>

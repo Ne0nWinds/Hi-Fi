@@ -64,6 +64,7 @@
 #albumArt {
     height: 320px;
     width: 320px;
+    object-fit: cover;
     animation: fadein 750ms;
 }
 #songset-img-placeholder {
@@ -234,4 +235,73 @@
 }
 #controls i {
     cursor: pointer;
+}
+#overlay {
+    position: fixed;
+    visibility: hidden;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#create-new-playlist {
+    background-color: #fff;
+    padding: 5px 15px;
+    border-radius: 7px;
+    width: 450px;
+    text-align: center;
+}
+#create-new-playlist img {
+    width: 80%;
+    margin: 25px auto;
+}
+#create-new-playlist h1 {
+    font-weight: 500;
+    font-size: 36px;
+    margin: 10px 0;
+}
+#create-new-playlist h2 {
+    font-weight: 500;
+    font-size: 20px;
+}
+#create-new-playlist form > * {
+    display: block;
+    margin: 15px 0;
+}
+#create-new-playlist input {
+    margin: 15px auto;
+    width: 75%;
+    border: 1px solid #bbb;
+    padding: 8px;
+}
+#create-new-playlist textarea {
+    width: 75%;
+    padding: 8px;
+    margin: 15px auto;
+    resize: none;
+    font-family: 'Noto Sans SC', 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+}
+#create-new-playlist #file {
+    display: none;
+}
+#create-new-playlist #file-label {
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 17px;
+}
+#create-new-playlist button {
+    margin: 15px auto;
+    background-color: #ffa30b;
+    border: 0;
+    outline: 0;
+    color: white;
+    font-size: 20px;
+    width: 115px;
+    height: 35px;
+    border-radius: 35px;
 }
