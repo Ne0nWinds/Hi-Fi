@@ -114,6 +114,12 @@ const NewPlaylistMenu = props => {
     return (
         <div id="overlay" onClick={props.hidePlaylistMenu}>
             <div id="create-new-playlist">
+                <p
+                    id="new-playlist-close"
+                    onClick={props.hidePlaylistMenu}
+                    class="fa">
+                    &#xf05c;
+                </p>
                 <h1>New Playlist</h1>
                 <img src="/img/new_playlist.svg" />
                 <form onSubmit={handleSubmit}>
@@ -140,10 +146,11 @@ class SongSet extends React.Component {
         this.state = {
             loaded: false,
             set: {},
+            isOwner: false,
         };
         this.handleAPICalls();
     }
-    componentDidMount() {
+    componentDidUpdate() {
         // generate background color
         let albumArt = document.getElementById('albumArt');
         if (albumArt != null)
@@ -153,8 +160,12 @@ class SongSet extends React.Component {
                 document.getElementById('songset').style.backgroundImage =
                     'linear-gradient(' + avg + ',#191715)';
             };
+        else
+            document.getElementById('songset').style.backgroundImage =
+                'linear-gradient(#252525,#191715)';
     }
     componentWillReceiveProps(newProps) {
+        this.setState({loaded: false});
         if (newProps.url[1] != this.props.url[1]) this.handleAPICalls(newProps);
     }
     handleAPICalls = async (p = this.props) => {
@@ -178,7 +189,19 @@ class SongSet extends React.Component {
         );
 
         songset.isAlbum = url[0] == 'album';
-        await this.setState({set: songset, loaded: true});
+        await this.setState({
+            set: songset,
+            loaded: true,
+        });
+        if (songset.isAlbum)
+            this.setState({
+                isOwner: false,
+            });
+        else {
+            this.setState({
+                isOwner: songset.creatorID == this.props.user._id,
+            });
+        }
     };
     showContextMenu = e => {
         e.preventDefault();
@@ -242,10 +265,19 @@ class SongSet extends React.Component {
                                         ? this.state.set.description
                                         : 'No description'}
                                 </p>
-                                <button onClick={this.playSong}>Play</button>
-                                {this.props.deletePlaylist ? (
-                                    <button onClick={this.deletePlaylist}>
-                                        Delete
+                                <button onClick={this.playSong} class="fa">
+                                    &#xf04b;
+                                </button>
+                                {this.state.isOwner ? (
+                                    <button class="fa">&#xf044;</button>
+                                ) : (
+                                    ''
+                                )}
+                                {this.state.isOwner ? (
+                                    <button
+                                        onClick={this.deletePlaylist}
+                                        class="fa">
+                                        &#xf00d;
                                     </button>
                                 ) : (
                                     ''
@@ -297,7 +329,9 @@ class SongSet extends React.Component {
                             <div>
                                 <h1></h1>
                                 <p></p>
-                                <button disabled>Play</button>
+                                <button disabled class="fa">
+                                    &#xf04b;
+                                </button>
                             </div>
                         </div>
                         <div id="songset-tracklist">
@@ -598,6 +632,7 @@ class WebPlayer extends React.Component {
                                 setQueue={this.setQueue}
                                 playNextInQueue={this.playNextInQueue}
                                 deletePlaylist={this.deletePlaylist}
+                                user={this.props.user}
                                 url={props.match.url.substring(1).split('/')}
                             />
                         )}

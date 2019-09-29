@@ -319,6 +319,9 @@ api.get('/playlist/delete/:id', async (request, response) => {
             .collection('playlists')
             .findOne({_id: playlistID});
         if (playlist.creatorID == request.session.user) {
+            db.collection('images.files').findOneAndDelete({
+                _id: new ObjectID(playlist.artID),
+            });
             await db
                 .collection('playlists')
                 .findOneAndDelete({_id: new ObjectID(playlistID)});
@@ -330,11 +333,9 @@ api.get('/playlist/delete/:id', async (request, response) => {
                 );
             response.json({msg: 'Deletion Successful'});
         } else {
-            console.log('hit');
             response.status(400).end();
         }
     } catch (err) {
-        console.log('hit2');
         console.log(err);
         response.status(400).json({msg: 'Invalid Playlist ID'});
     }
