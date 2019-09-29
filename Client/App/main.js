@@ -95,7 +95,9 @@ const ContextMenu = props => {
     );
 };
 const NewPlaylistMenu = props => {
-    const handleSubmit = async e => {
+    let p = props.playlistToEdit;
+
+    const handleNew = async e => {
         e.preventDefault();
         e.persist();
         let form = e.nativeEvent.target;
@@ -111,6 +113,24 @@ const NewPlaylistMenu = props => {
         props.addPlaylist(response.data);
         props.hidePlaylistMenu();
     };
+    const handleEdit = async e => {
+        e.preventDefault();
+        e.persist();
+        let form = e.nativeEvent.target;
+        let body = new FormData();
+        if (form.name.value != '') body.append('title', form.name.value);
+        if (form.description.value != '')
+            body.append('description', form.description.value);
+        if (form[2].files[0])
+            body.append('image', form[2].files[0], form[2].files[0].name);
+        let response = await axios.post(
+            '/api/playlist/editmeta/' + p._id,
+            body,
+        );
+        //props.updatePlaylist(response.data);
+        console.log(response);
+        props.hidePlaylistMenu();
+    };
     return (
         <div id="overlay" onClick={props.hidePlaylistMenu}>
             <div id="create-new-playlist">
@@ -120,13 +140,19 @@ const NewPlaylistMenu = props => {
                     class="fa">
                     &#xf05c;
                 </p>
-                <h1>New Playlist</h1>
+                <h1>{p ? 'Edit' : 'New'} Playlist</h1>
                 <img src="/img/new_playlist.svg" />
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={p ? handleEdit : handleNew}>
                     <h2>Name</h2>
-                    <input type="text" name="name" />
+                    <input
+                        type="text"
+                        name="name"
+                        placeholder={p ? p.title : ''}
+                    />
                     <h2>Description</h2>
-                    <textarea name="description"></textarea>
+                    <textarea
+                        name="description"
+                        placeholder={p ? p.description : ''}></textarea>
                     <label for="file" id="file-label">
                         Choose A Cover Photo <span class="fa">&#xf019;</span>
                     </label>
@@ -165,8 +191,10 @@ class SongSet extends React.Component {
                 'linear-gradient(#252525,#191715)';
     }
     componentWillReceiveProps(newProps) {
-        this.setState({loaded: false});
-        if (newProps.url[1] != this.props.url[1]) this.handleAPICalls(newProps);
+        if (newProps.url[1] != this.props.url[1]) {
+            this.setState({loaded: false});
+            this.handleAPICalls(newProps);
+        }
     }
     handleAPICalls = async (p = this.props) => {
         let url = p.url;
@@ -189,14 +217,11 @@ class SongSet extends React.Component {
         );
 
         songset.isAlbum = url[0] == 'album';
-        await this.setState({
+        this.setState({
             set: songset,
             loaded: true,
         });
-        if (songset.isAlbum)
-            this.setState({
-                isOwner: false,
-            });
+        if (songset.isAlbum) this.setState({isOwner: false});
         else {
             this.setState({
                 isOwner: songset.creatorID == this.props.user._id,
@@ -234,7 +259,11 @@ class SongSet extends React.Component {
     deletePlaylist = () => {
         this.props.deletePlaylist(this.state.set._id);
     };
+    editPlaylist = () => {
+        this.props.editPlaylist(this.state.set);
+    };
     render() {
+        this.count = 0;
         return (
             <div>
                 {this.state.loaded ? (
@@ -269,7 +298,11 @@ class SongSet extends React.Component {
                                     &#xf04b;
                                 </button>
                                 {this.state.isOwner ? (
-                                    <button class="fa">&#xf044;</button>
+                                    <button
+                                        class="fa"
+                                        onClick={this.editPlaylist}>
+                                        &#xf044;
+                                    </button>
                                 ) : (
                                     ''
                                 )}
@@ -293,6 +326,7 @@ class SongSet extends React.Component {
                             </div>
                             {this.state.set.songs.map(s => {
                                 this.count++;
+                                console.log(this.count);
                                 return (
                                     <div
                                         class="song-row"
@@ -357,8 +391,9 @@ class WebPlayer extends React.Component {
             userID: this.props.user._id,
             playlists: [],
             homeAlbums: [],
-            songSetLoaded: false,
             serverResponded: false,
+            playlistToEdit: null,
+            overlayOpen: false,
         };
         this.contextMenuSong = '';
         this.audio = new Audio();
@@ -405,7 +440,7 @@ class WebPlayer extends React.Component {
                     this.setVolume(this.audio.volume - 0.05);
                     break;
                 case ' ':
-                    if (!this.overlayOpen) this.handlePausePlay();
+                    if (!this.state.overlayOpen) this.handlePausePlay();
                     break;
                 case 'Escape':
                     this.hideContextMenu();
@@ -558,18 +593,19 @@ class WebPlayer extends React.Component {
 
     // new playlist menu
     showPlaylistMenu = () => {
-        document.getElementById('overlay').style.visibility = 'visible';
-        this.overlayOpen = true;
+        this.setState({overlayOpen: true});
+    };
+    editPlaylist = playlistToEdit => {
+        this.setState({playlistToEdit, overlayOpen: true});
     };
     hidePlaylistMenu = (e = null) => {
         if (e) e.persist();
-        if (e == null || e.target.id == 'overlay')
-            document.getElementById('overlay').style.visibility = 'hidden';
-        this.overlayOpen = false;
+        if (e == null || e.target.id == 'overlay') {
+            this.setState({playlistToEdit: null, overlayOpen: false});
+        }
     };
 
-    deletePlaylist = async () => {
-        let id = this.props.url.split('/')[2];
+    deletePlaylist = async id => {
         let response = await axios.get('/api/playlist/delete/' + id);
         this.setState({
             playlists: this.state.playlists.filter(p => p._id != id),
@@ -588,7 +624,6 @@ class WebPlayer extends React.Component {
             this.setState({redirectHome: false});
             return <Redirect to="/" />;
         }
-        console.log(this.props.url);
         return (
             <div id="webPlayer" onClick={this.hideContextMenu}>
                 <Sidebar
@@ -632,6 +667,7 @@ class WebPlayer extends React.Component {
                                 setQueue={this.setQueue}
                                 playNextInQueue={this.playNextInQueue}
                                 deletePlaylist={this.deletePlaylist}
+                                editPlaylist={this.editPlaylist}
                                 user={this.props.user}
                                 url={props.match.url.substring(1).split('/')}
                             />
@@ -646,11 +682,16 @@ class WebPlayer extends React.Component {
                     addToStartOfQueue={this.addToStartOfQueue}
                     addToEndOfQueue={this.addToEndOfQueue}
                 />
-                <NewPlaylistMenu
-                    createNewPlaylist={this.createNewPlaylist}
-                    hidePlaylistMenu={this.hidePlaylistMenu}
-                    addPlaylist={this.addPlaylist}
-                />
+                {this.state.overlayOpen ? (
+                    <NewPlaylistMenu
+                        createNewPlaylist={this.createNewPlaylist}
+                        hidePlaylistMenu={this.hidePlaylistMenu}
+                        addPlaylist={this.addPlaylist}
+                        playlistToEdit={this.state.playlistToEdit}
+                    />
+                ) : (
+                    ''
+                )}
                 <div id="controls">
                     <span id="progress-container">
                         <div id="progress" />

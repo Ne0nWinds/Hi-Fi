@@ -239,7 +239,6 @@ main {
 }
 #overlay {
     position: fixed;
-    visibility: hidden;
     top: 0;
     left: 0;
     width: 100vw;
@@ -263,6 +262,8 @@ main {
 #create-new-playlist img {
     width: 80%;
     margin: 25px auto;
+    max-height: 320px;
+    object-fit: cover;
 }
 #create-new-playlist h1 {
     font-weight: 500;

@@ -34,6 +34,7 @@ mongoClient.connect(
         db = client.db('HiFi');
     },
 );
+const maxFileSize = 1024 * 1024 * 10; // 10MB for photos
 
 // Login/Reg
 api.post(
@@ -128,7 +129,10 @@ api.get('/logout', (request, response) => {
 // creating/managing playlists
 api.post(
     '/playlist/new',
-    multer({storage: multer.memoryStorage()}).single('image'),
+    multer(
+        {storage: multer.memoryStorage()},
+        {limits: {fileSize: maxFileSize}},
+    ).single(),
     async (request, response) => {
         if (!request.session.user) {
             response.json({msg: 'Not Logged In'});
@@ -276,34 +280,66 @@ api.post(
 
 api.post(
     '/playlist/editmeta/:playlistID',
-    multer({storage: multer.memoryStorage()}).none(),
+    multer(
+        {storage: multer.memoryStorage()},
+        {limits: {fileSize: maxFileSize}},
+    ).single(),
     async (request, response) => {
         let playlistID;
+        let oldPlaylist;
         try {
             playlistID = new ObjectID(request.params.playlistID);
-            let oldPlaylist = await db
+            oldPlaylist = await db
                 .collection('playlists')
                 .findOne({_id: playlistID});
         } catch (err) {
             response.status(400).json({msg: 'Invalid Playlist ID'});
         }
         let editedPlaylist = {
-            $set: {
-                name: request.body.name ? request.body.name : oldPlaylist.name,
-            },
-            $set: {
-                description: request.body.description
-                    ? request.body.description
-                    : oldPlaylist.description,
-            },
+            title: request.body.title ? request.body.title : oldPlaylist.title,
+            description: request.body.description
+                ? request.body.description
+                : oldPlaylist.description,
         };
+        let newPlaylist;
         try {
-            await db
-                .collection('playlist')
-                .findOneAndUpdate({_id: playlistID}, editedPlaylist);
-            response.json({msg: 'Meta Data Changed Successfully'});
+            newPlaylist = await db
+                .collection('playlists')
+                .findOneAndUpdate(
+                    {_id: playlistID},
+                    {$set: editedPlaylist},
+                    {returnOriginal: false},
+                );
         } catch (err) {
             response.status(500).json({msg: 'Meta Data Change Failed'});
+        }
+        if (request.file) {
+            const readable = new Readable();
+            readable.push(request.file.buffer);
+            readable.push(null);
+            let bucket = new mongodb.GridFSBucket(db, {bucketName: 'images'});
+            let uploadStream = bucket.openUploadStream(editedPlaylist.title);
+            let artID = uploadStream.id;
+            readable.pipe(uploadStream);
+            uploadStream.on('error', () => {
+                return response.status(500).json({msg: 'Error Uploading File'});
+            });
+            uploadStream.on('finish', async () => {
+                try {
+                    let data = await db
+                        .collection('playlists')
+                        .findOneAndUpdate(
+                            {_id: playlistID},
+                            {$set: {artID}},
+                            {returnOriginal: false},
+                        );
+                    response.json(data);
+                } catch (err) {
+                    response.json(newPlaylist);
+                }
+            });
+        } else {
+            response.json(newPlaylist);
         }
     },
 );
@@ -319,9 +355,11 @@ api.get('/playlist/delete/:id', async (request, response) => {
             .collection('playlists')
             .findOne({_id: playlistID});
         if (playlist.creatorID == request.session.user) {
-            db.collection('images.files').findOneAndDelete({
-                _id: new ObjectID(playlist.artID),
-            });
+            if (playlist.artID != '') {
+                db.collection('images.files').findOneAndDelete({
+                    _id: new ObjectID(playlist.artID),
+                });
+            }
             await db
                 .collection('playlists')
                 .findOneAndDelete({_id: new ObjectID(playlistID)});
@@ -329,7 +367,7 @@ api.get('/playlist/delete/:id', async (request, response) => {
                 .collection('users')
                 .findOneAndUpdate(
                     {_id: new ObjectID(request.session.user)},
-                    {$pull: {playlists: request.params.id}},
+                    {$pull: {playlists: new ObjectID(request.params.id)}},
                 );
             response.json({msg: 'Deletion Successful'});
         } else {
