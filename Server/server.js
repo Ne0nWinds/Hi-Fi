@@ -189,7 +189,6 @@ api.post(
                         );
                     response.json(newPlaylist);
                 } catch (err) {
-                    console.log(err);
                     response.json(newPlaylist);
                 }
             });
@@ -261,7 +260,6 @@ api.post(
     '/playlist/removeSong/',
     multer({storage: multer.memoryStorage()}).none(),
     async (request, response) => {
-        console.log(request.body);
         try {
             let playlist = await db
                 .collection('playlists')
@@ -323,17 +321,21 @@ api.get('/playlist/delete/:id', async (request, response) => {
         if (playlist.creatorID == request.session.user) {
             await db
                 .collection('playlists')
-                .findOneAndDelete({_id: playlistID});
+                .findOneAndDelete({_id: new ObjectID(playlistID)});
             await db
                 .collection('users')
                 .findOneAndUpdate(
                     {_id: new ObjectID(request.session.user)},
-                    {$pull: {playlists: playlistID}},
+                    {$pull: {playlists: request.params.id}},
                 );
+            response.json({msg: 'Deletion Successful'});
         } else {
+            console.log('hit');
             response.status(400).end();
         }
     } catch (err) {
+        console.log('hit2');
+        console.log(err);
         response.status(400).json({msg: 'Invalid Playlist ID'});
     }
 });
@@ -537,7 +539,6 @@ api.post(
                     .toArray();
             response.json(data);
         } catch (err) {
-            console.log(err);
             response.status(400).json({msg: 'Invalid Playlist ID(s)'});
         }
     },

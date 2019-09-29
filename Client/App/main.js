@@ -107,8 +107,8 @@ const NewPlaylistMenu = props => {
         body.append('description', form.description.value);
         if (form[2].files[0])
             body.append('image', form[2].files[0], form[2].files[0].name);
-        let newPlaylist = await axios.post('/api/playlist/new', body);
-        console.log(newPlaylist);
+        let response = await axios.post('/api/playlist/new', body);
+        props.addPlaylist(response.data);
         props.hidePlaylistMenu();
     };
     return (
@@ -137,6 +137,11 @@ class SongSet extends React.Component {
     constructor(props) {
         super(props);
         this.count = 0;
+        this.state = {
+            loaded: false,
+            set: {},
+        };
+        this.handleAPICalls();
     }
     componentDidMount() {
         // generate background color
@@ -149,11 +154,37 @@ class SongSet extends React.Component {
                     'linear-gradient(' + avg + ',#191715)';
             };
     }
+    componentWillReceiveProps(newProps) {
+        if (newProps.url[1] != this.props.url[1]) this.handleAPICalls(newProps);
+    }
+    handleAPICalls = async (p = this.props) => {
+        let url = p.url;
+        let response;
+        try {
+            if (url[0] == 'album')
+                response = await axios.get('/api/album/get/' + url[1]);
+            else response = await axios.get('/api/playlist/view/' + url[1]);
+        } catch (err) {
+            return;
+        }
+        songset = {...response.data, songs: []};
+        let songs = response.data.songs.join(',');
+        let body = new FormData();
+        body.append('songs', songs);
+
+        response = await axios.post('/api/songs/view', body);
+        songset.songs = response.data.sort(
+            (a, b) => Number(a.trackNumber) > Number(b.trackNumber),
+        );
+
+        songset.isAlbum = url[0] == 'album';
+        await this.setState({set: songset, loaded: true});
+    };
     showContextMenu = e => {
         e.preventDefault();
         e.persist();
         let id = e.target.id || e.target.parentElement.id;
-        let song = this.props.set.songs.find(s => s._id == id);
+        let song = this.state.set.songs.find(s => s._id == id);
         this.props.showContextMenu(song, e.pageX, e.pageY);
     };
     playSong = e => {
@@ -161,9 +192,9 @@ class SongSet extends React.Component {
         let id = e.target.id || e.target.parentElement.id;
         let queue = new Array();
         if (!id) {
-            queue = this.props.set.songs;
+            queue = this.state.set.songs;
         } else {
-            let allSongs = this.props.set.songs;
+            let allSongs = this.state.set.songs;
             for (let i = 0; i < allSongs.length; i++) {
                 if (queue.length > 0 || allSongs[i]._id == id) {
                     queue.push(allSongs[i]);
@@ -171,44 +202,44 @@ class SongSet extends React.Component {
             }
         }
         this.props.setQueue(queue);
-        if (this.props.set.isAlbum) {
-            this.props.playNextInQueue(this.props.set.artID);
+        if (this.state.set.isAlbum) {
+            this.props.playNextInQueue(this.state.set.artID);
         } else {
             this.props.playNextInQueue();
         }
     };
     deletePlaylist = () => {
-        this.props.deletePlaylist(this.props.set._id);
+        this.props.deletePlaylist(this.state.set._id);
     };
     render() {
         return (
             <div>
-                {this.props.loaded ? (
+                {this.state.loaded ? (
                     <main id="songset">
                         <div id="songset-meta">
-                            {this.props.set.artID != '' ? (
+                            {this.state.set.artID != '' ? (
                                 <img
                                     id="albumArt"
                                     src={
                                         '/api/image/view/' +
-                                        this.props.set.artID
+                                        this.state.set.artID
                                     }
                                     alt="Album Cover"
                                 />
                             ) : (
                                 <div id="songset-img-placeholder">
                                     No{' '}
-                                    {this.props.set.isAlbum
+                                    {this.state.set.isAlbum
                                         ? 'Album Cover'
                                         : 'Playlist Photo'}{' '}
                                     Available
                                 </div>
                             )}
                             <div>
-                                <h1>{this.props.set.title}</h1>
+                                <h1>{this.state.set.title}</h1>
                                 <p>
-                                    {this.props.set.description != undefined
-                                        ? this.props.set.description
+                                    {this.state.set.description != undefined
+                                        ? this.state.set.description
                                         : 'No description'}
                                 </p>
                                 <button onClick={this.playSong}>Play</button>
@@ -228,7 +259,7 @@ class SongSet extends React.Component {
                                 <p class="song-col song-col-artist">Artist</p>
                                 <p class="song-col song-col-time">Time</p>
                             </div>
-                            {this.props.set.songs.map(s => {
+                            {this.state.set.songs.map(s => {
                                 this.count++;
                                 return (
                                     <div
@@ -237,7 +268,7 @@ class SongSet extends React.Component {
                                         onClick={this.playSong}
                                         onContextMenu={this.showContextMenu}>
                                         <p class="song-col song-col-num">
-                                            {this.props.set.isAlbum
+                                            {this.state.set.isAlbum
                                                 ? s.trackNumber
                                                 : this.count}
                                         </p>
@@ -270,7 +301,7 @@ class SongSet extends React.Component {
                             </div>
                         </div>
                         <div id="songset-tracklist">
-                            <div class="song-row">
+                            <div class="song-row" id="song-row-header">
                                 <p class="song-col song-col-num">&#35;</p>
                                 <p class="song-col song-col-title">Title</p>
                                 <p class="song-col song-col-artist">Artist</p>
@@ -292,7 +323,6 @@ class WebPlayer extends React.Component {
             userID: this.props.user._id,
             playlists: [],
             homeAlbums: [],
-            currentSongSet: {},
             songSetLoaded: false,
             serverResponded: false,
         };
@@ -302,46 +332,13 @@ class WebPlayer extends React.Component {
         this.player.initialize(this.audio);
         this.interval = null;
         this.queue = [];
+
+        this.getHomeAlbums();
     }
 
-    handleAPICalls = async () => {
-        let url = this.props.url.substring(1).split('/');
-        if (this.state.homeAlbums.length == 0 && url[0] == '')
-            return new Promise(async (resolve, reject) => {
-                let response = await axios.get('/api/albums/get');
-                this.setState({homeAlbums: response.data});
-                resolve();
-            });
-        else if (url[0] == 'album' || url[0] == 'playlist')
-            return new Promise(async (resolve, reject) => {
-                let response, songset;
-
-                try {
-                    if (url[0] == 'album')
-                        response = await axios.get('/api/album/get/' + url[1]);
-                    else
-                        response = await axios.get(
-                            '/api/playlist/view/' + url[1],
-                        );
-                } catch (err) {
-                    this.setState({redirectHome: true, serverResponded: true});
-                    return;
-                }
-                songset = {songs: [], ...response.data};
-                let songs = response.data.songs.join(',');
-                let body = new FormData();
-                body.append('songs', songs);
-
-                songset.songs = (await axios.post(
-                    '/api/songs/view',
-                    body,
-                )).data.sort(
-                    (a, b) => Number(a.trackNumber) > Number(b.trackNumber),
-                );
-                songset.isAlbum = url[0] == 'album';
-                this.setState({currentSongSet: songset, songSetLoaded: true});
-                resolve();
-            });
+    getHomeAlbums = async () => {
+        let response = await axios.get('/api/albums/get');
+        this.setState({homeAlbums: response.data});
     };
 
     async componentDidMount() {
@@ -358,7 +355,6 @@ class WebPlayer extends React.Component {
         }
 
         // main queries
-        await this.handleAPICalls();
         this.setState({serverResponded: true});
 
         // controls
@@ -380,16 +376,10 @@ class WebPlayer extends React.Component {
                 case 'Escape':
                     this.hideContextMenu();
                     this.hidePlaylistMenu();
+                    this.setState({});
             }
         });
         this.progress = document.getElementById('progress');
-    }
-
-    async getSnapshotBeforeUpdate(prevProps, prevState) {
-        if (prevProps.url != this.props.url) {
-            this.setState({songSetLoaded: false});
-            await this.handleAPICalls();
-        }
     }
 
     // context menu
@@ -529,7 +519,6 @@ class WebPlayer extends React.Component {
         body.append('playlistID', this.state.currentSongSet._id);
         try {
             let response = await axios.post('/api/playlist/removeSong', body);
-            await this.handleAPICalls();
         } catch (err) {}
     };
 
@@ -546,15 +535,18 @@ class WebPlayer extends React.Component {
     };
 
     deletePlaylist = async () => {
+        let id = this.props.url.split('/')[2];
+        let response = await axios.get('/api/playlist/delete/' + id);
         this.setState({
-            playlists: this.state.playlists.filter(
-                p => p._id != this.state.currentSongSet._id,
-            ),
+            playlists: this.state.playlists.filter(p => p._id != id),
         });
         this.setState({redirectHome: true});
-        let response = await axios.get(
-            '/api/playlist/delete/' + this.state.currentSongSet._id,
-        );
+    };
+
+    addPlaylist = newPlaylist => {
+        this.setState({
+            playlists: [...this.state.playlists, newPlaylist],
+        });
     };
 
     render() {
@@ -562,110 +554,104 @@ class WebPlayer extends React.Component {
             this.setState({redirectHome: false});
             return <Redirect to="/" />;
         }
+        console.log(this.props.url);
         return (
-            <div>
-                {this.state.serverResponded ? (
-                    <div id="webPlayer" onClick={this.hideContextMenu}>
-                        <Sidebar
-                            email={this.state.email}
-                            playlists={this.state.playlists}
-                            showPlaylistMenu={this.showPlaylistMenu}
-                        />
-                        <Switch>
-                            <Route
-                                exact
-                                path="/"
-                                component={() => (
-                                    <Home albums={this.state.homeAlbums} />
-                                )}
+            <div id="webPlayer" onClick={this.hideContextMenu}>
+                <Sidebar
+                    email={this.state.email}
+                    playlists={this.state.playlists}
+                    showPlaylistMenu={this.showPlaylistMenu}
+                />
+                <Switch>
+                    <Route
+                        exact
+                        path="/"
+                        component={props => (
+                            <Home albums={this.state.homeAlbums} />
+                        )}
+                    />
+                    <Route
+                        exact
+                        path="/library"
+                        render={props => <Library />}
+                    />
+                    <Route
+                        path="/album/:id"
+                        render={props => {
+                            return (
+                                <SongSet
+                                    showContextMenu={this.showContextMenu}
+                                    setQueue={this.setQueue}
+                                    playNextInQueue={this.playNextInQueue}
+                                    url={props.match.url
+                                        .substring(1)
+                                        .split('/')}
+                                />
+                            );
+                        }}
+                    />
+                    <Route
+                        path="/playlist/:id"
+                        render={props => (
+                            <SongSet
+                                showContextMenu={this.showContextMenu}
+                                setQueue={this.setQueue}
+                                playNextInQueue={this.playNextInQueue}
+                                deletePlaylist={this.deletePlaylist}
+                                url={props.match.url.substring(1).split('/')}
                             />
-                            <Route
-                                exact
-                                path="/library"
-                                component={() => <Library />}
-                            />
-                            <Route
-                                path="/album/:id"
-                                component={() => (
-                                    <SongSet
-                                        set={this.state.currentSongSet}
-                                        loaded={this.state.songSetLoaded}
-                                        showContextMenu={this.showContextMenu}
-                                        setQueue={this.setQueue}
-                                        playNextInQueue={this.playNextInQueue}
-                                    />
-                                )}
-                            />
-                            <Route
-                                path="/playlist/:id"
-                                component={() => (
-                                    <SongSet
-                                        set={this.state.currentSongSet}
-                                        loaded={this.state.songSetLoaded}
-                                        showContextMenu={this.showContextMenu}
-                                        setQueue={this.setQueue}
-                                        playNextInQueue={this.playNextInQueue}
-                                        deletePlaylist={this.deletePlaylist}
-                                    />
-                                )}
-                            />
-                        </Switch>
-                        <ContextMenu
-                            isAlbum={this.state.currentSongSet.isAlbum}
-                            playlists={this.state.playlists}
-                            addToPlaylist={this.addToPlaylist}
-                            removeFromPlaylist={this.removeFromPlaylist}
-                            addToStartOfQueue={this.addToStartOfQueue}
-                            addToEndOfQueue={this.addToEndOfQueue}
-                        />
-                        <NewPlaylistMenu
-                            createNewPlaylist={this.createNewPlaylist}
-                            hidePlaylistMenu={this.hidePlaylistMenu}
-                        />
-                        <div id="controls">
-                            <span id="progress-container">
-                                <div id="progress" />
-                            </span>
-                            <div id="left-controls">
-                                <img id="left-controls-album-cover" src="" />
-                                <div>
-                                    <p id="controls-song-title"></p>
-                                    <p id="controls-song-artist"></p>
-                                </div>
-                            </div>
-                            <div id="main-controls">
-                                <i class="fa skip">&#xf049;</i>
-                                <i
-                                    class="fa"
-                                    id="pause-play"
-                                    onClick={this.handlePausePlay}>
-                                    &#xf01d;
-                                </i>
-                                <i
-                                    onClick={this.playNextInQueue}
-                                    class="fa skip">
-                                    &#xf050;
-                                </i>
-                            </div>
-                            <div id="right-controls">
-                                <div>
-                                    <i class="fa">&#xf028;</i>
-                                    <div
-                                        onClick={this.handleVolumeChange}
-                                        onMouseMove={this.handleVolumeChange}
-                                        id="volume-slider-container">
-                                        <div id="volume-slider"></div>
-                                    </div>
-                                </div>
-                                <i class="fa">&#xf00b;</i>
-                            </div>
+                        )}
+                    />
+                </Switch>
+                <ContextMenu
+                    isAlbum={this.props.url[0] == 'album'}
+                    playlists={this.state.playlists}
+                    addToPlaylist={this.addToPlaylist}
+                    removeFromPlaylist={this.removeFromPlaylist}
+                    addToStartOfQueue={this.addToStartOfQueue}
+                    addToEndOfQueue={this.addToEndOfQueue}
+                />
+                <NewPlaylistMenu
+                    createNewPlaylist={this.createNewPlaylist}
+                    hidePlaylistMenu={this.hidePlaylistMenu}
+                    addPlaylist={this.addPlaylist}
+                />
+                <div id="controls">
+                    <span id="progress-container">
+                        <div id="progress" />
+                    </span>
+                    <div id="left-controls">
+                        <img id="left-controls-album-cover" src="" />
+                        <div>
+                            <p id="controls-song-title"></p>
+                            <p id="controls-song-artist"></p>
                         </div>
                     </div>
-                ) : (
-                    <div id="appAnimContainer">
-                        <img id="loadingAnim" src="/img/logo.svg" />
+                    <div id="main-controls">
+                        <i class="fa skip">&#xf049;</i>
+                        <i
+                            class="fa"
+                            id="pause-play"
+                            onClick={this.handlePausePlay}>
+                            &#xf01d;
+                        </i>
+                        <i onClick={this.playNextInQueue} class="fa skip">
+                            &#xf050;
+                        </i>
                     </div>
-                )}
+                    <div id="right-controls">
+                        <div>
+                            <i class="fa">&#xf028;</i>
+                            <div
+                                onClick={this.handleVolumeChange}
+                                onMouseMove={this.handleVolumeChange}
+                                id="volume-slider-container">
+                                <div id="volume-slider"></div>
+                            </div>
+                        </div>
+                        <i class="fa">&#xf00b;</i>
+                    </div>
+                </div>
             </div>
         );
     }
