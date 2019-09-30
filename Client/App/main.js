@@ -28,32 +28,57 @@ function getAverageColor(img) {
     return {r, g, b};
 }
 
-const Sidebar = props => (
-    <nav id="sidebar">
-        <ul>
-            <li id="accountControl">
-                <img src="/img/user-circle-solid.svg" alt="Profile Picture" />
-                <p>{props.email.replace(/@.*/, '')}</p>
-            </li>
-        </ul>
-        <ul>
-            <Link to="/">
-                <li>Home</li>
-            </Link>
-            <Link to="/library">
-                <li>Library</li>
-            </Link>
-        </ul>
-        <ul>
-            <li onClick={props.showPlaylistMenu}>New Playlist</li>
-            {props.playlists.map(p => (
-                <Link to={'/playlist/' + p._id}>
-                    <li to={'/playlist/' + p._id}>{p.title}</li>
-                </Link>
-            ))}
-        </ul>
-    </nav>
-);
+class Sidebar extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            accountMenu: false,
+        };
+    }
+    toggleAccountMenu = () => {
+        this.setState({accountMenu: !this.state.accountMenu});
+    };
+    logout = () => {
+        this.props.logout();
+    };
+    render() {
+        const props = this.props;
+        return (
+            <nav id="sidebar">
+                <ul>
+                    <li id="accountControl" onClick={this.toggleAccountMenu}>
+                        <img
+                            src="/img/user-circle-solid.svg"
+                            alt="Profile Picture"
+                        />
+                        <p>{props.email.replace(/@.*/, '')}</p>
+                    </li>
+                    {this.state.accountMenu ? (
+                        <li onClick={this.logout}>Log Out</li>
+                    ) : (
+                        ''
+                    )}
+                </ul>
+                <ul>
+                    <Link to="/">
+                        <li>Home</li>
+                    </Link>
+                    <Link to="/library">
+                        <li>Library</li>
+                    </Link>
+                </ul>
+                <ul>
+                    <li onClick={props.showPlaylistMenu}>New Playlist</li>
+                    {props.playlists.map(p => (
+                        <Link to={'/playlist/' + p._id}>
+                            <li to={'/playlist/' + p._id}>{p.title}</li>
+                        </Link>
+                    ))}
+                </ul>
+            </nav>
+        );
+    }
+}
 
 const Home = props => (
     <main id="home">
@@ -64,7 +89,78 @@ const Home = props => (
         ))}
     </main>
 );
-const Library = () => <main id="library"></main>;
+
+class Library extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            loaded: false,
+            songs: [],
+        };
+    }
+    async componentDidMount() {
+        let response = await axios.get('/api/library');
+        if (response.status == 200)
+            this.setState({songs: response.data, loaded: true});
+    }
+    playSong = e => {
+        e.persist();
+        let id = e.target.id || e.target.parentElement.id;
+        let queue = new Array();
+        let allSongs = this.state.songs;
+        for (let i = 0; i < allSongs.length; i++) {
+            if (queue.length > 0 || allSongs[i]._id == id) {
+                queue.push(allSongs[i]);
+            }
+        }
+        this.props.setQueue(queue);
+    };
+    async componentDidRender() {
+        let response = await axios.get('/api/library');
+        if (
+            response.status == 200 &&
+            response.data.length != this.state.songs.length
+        )
+            this.setState({songs: response.data, loaded: true});
+    }
+    render() {
+        if (!this.state.loaded) {
+            return <div />;
+        } else if (this.state.songs.length == 0) {
+            return <div>You haven't added any songs to a playlist, yet.</div>;
+        } else {
+            this.count = 0;
+            return (
+                <div>
+                    {this.state.songs.map(s => {
+                        this.count++;
+                        console.log(s);
+                        return (
+                            <div
+                                class="song-row"
+                                id={s._id}
+                                onClick={this.playSong}
+                                onContextMenu={this.showContextMenu}>
+                                <p class="song-col song-col-num">
+                                    {this.count}
+                                </p>
+                                <p class="song-col song-col-title">{s.title}</p>
+                                <p class="song-col song-col-artist">
+                                    {s.artist}
+                                </p>
+                                <p class="song-col song-col-time">
+                                    {Math.floor(s.duration / 60)}:
+                                    {Math.round(s.duration % 60) > 9 ? '' : '0'}
+                                    {Math.round(s.duration % 60)}
+                                </p>
+                            </div>
+                        );
+                    })}
+                </div>
+            );
+        }
+    }
+}
 
 const ContextMenu = props => {
     let addToPlaylist = e => {
@@ -215,7 +311,7 @@ class SongSet extends React.Component {
         } catch (err) {
             return;
         }
-        songset = {...response.data, songs: []};
+        let songset = {...response.data, songs: []};
         let songs = response.data.songs.join(',');
         let body = new FormData();
         body.append('songs', songs);
@@ -226,10 +322,7 @@ class SongSet extends React.Component {
         );
 
         songset.isAlbum = url[0] == 'album';
-        this.setState({
-            set: songset,
-            loaded: true,
-        });
+        this.setState({set: songset, loaded: true});
         if (songset.isAlbum) this.setState({isOwner: false});
         else {
             this.setState({
@@ -259,11 +352,6 @@ class SongSet extends React.Component {
             }
         }
         this.props.setQueue(queue);
-        if (this.state.set.isAlbum) {
-            this.props.playNextInQueue(this.state.set.artID);
-        } else {
-            this.props.playNextInQueue();
-        }
     };
     deletePlaylist = () => {
         this.props.deletePlaylist(this.state.set._id);
@@ -381,13 +469,14 @@ class WebPlayer extends React.Component {
             serverResponded: false,
             playlistToEdit: null,
             overlayOpen: false,
+            queue: [],
+            queueOpen: false,
         };
         this.contextMenuSong = '';
         this.audio = new Audio();
         this.player = dashjs.MediaPlayer().create();
         this.player.initialize(this.audio);
         this.interval = null;
-        this.queue = [];
 
         this.getHomeAlbums();
     }
@@ -478,50 +567,49 @@ class WebPlayer extends React.Component {
         this.interval = requestAnimationFrame(this.readDuration);
     };
 
-    setQueue = (queue = []) => {
-        this.queue = queue;
+    setQueue = async (queue = []) => {
+        await this.setState({queue});
+        this.playNextInQueue();
     };
-    playNextInQueue = (artID = null) => {
+    playNextInQueue = () => {
         const pauseplaybtn = document.getElementById('pause-play');
         this.audio.pause();
         this.audio.currentTime = 0.0;
 
-        if (this.queue.length == 0) {
+        let queue = this.state.queue;
+        if (queue.length == 0) {
             pauseplaybtn.innerHTML = '&#xf01d';
             return;
         }
-        document.getElementById(
-            'controls-song-title',
-        ).innerText = this.queue[0].title;
-        document.getElementById(
-            'controls-song-artist',
-        ).innerText = this.queue[0].artist;
-        if (artID != null && !artID.type) {
-            document.getElementById('left-controls-album-cover').src =
-                '/api/image/view/' + artID;
-        } else {
-            document.getElementById('left-controls-album-cover').src = '';
-            axios
-                .get('/api/album/get/' + this.queue[0].albumID)
-                .then(response => {
-                    if (response.status == 200)
-                        document.getElementById(
-                            'left-controls-album-cover',
-                        ).src = '/api/image/view/' + response.data.artID;
-                })
-                .catch(err => console.log(err));
-        }
-        this.player.attachSource('/api/mpd/' + this.queue[0]._id);
-        this.queue = this.queue.slice(1, this.queue.length);
+        document.getElementById('controls-song-title').innerText =
+            queue[0].title;
+        document.getElementById('controls-song-artist').innerText =
+            queue[0].artist;
+        document.getElementById('left-controls-album-cover').src = '';
+        axios
+            .get('/api/album/get/' + queue[0].albumID)
+            .then(response => {
+                if (response.status == 200)
+                    document.getElementById('left-controls-album-cover').src =
+                        '/api/image/view/' + response.data.artID;
+            })
+            .catch(err => console.log(err));
+
+        this.player.attachSource('/api/mpd/' + queue[0]._id);
+        this.setState({queue: queue.slice(1, queue.length)});
         pauseplaybtn.innerHTML = '&#xf28c';
         this.readDuration();
     };
-    addToStartOfQueue = () => {
-        this.queue = [this.contextMenuSong, ...this.queue];
-        if (this.queue.length == 1) this.playNextInQueue();
+    addToStartOfQueue = async () => {
+        await this.setState({
+            queue: [this.contextMenuSong, ...this.state.queue],
+        });
+        if (this.state.queue.length == 1) this.playNextInQueue();
     };
-    addToEndOfQueue = song => {
-        this.queue.push(this.contextMenuSong);
+    addToEndOfQueue = async song => {
+        this.setState({
+            queue: [...this.state.queue, this.contextMenuSong],
+        });
         if (this.queue.length == 1) this.playNextInQueue();
     };
 
@@ -577,6 +665,7 @@ class WebPlayer extends React.Component {
         try {
             let response = await axios.post('/api/playlist/removeSong', body);
         } catch (err) {}
+        this.setState({redirectToPlaylist: url[1]});
     };
 
     goToAlbum = () => {
@@ -626,6 +715,11 @@ class WebPlayer extends React.Component {
         });
     };
 
+    logout = async () => {
+        this.props.setUser(null);
+        await axios.get('/api/logout');
+    };
+
     render() {
         if (this.state.redirectHome) {
             this.setState({redirectHome: false});
@@ -647,6 +741,7 @@ class WebPlayer extends React.Component {
                     email={this.state.email}
                     playlists={this.state.playlists}
                     showPlaylistMenu={this.showPlaylistMenu}
+                    logout={this.logout}
                 />
                 <Switch>
                     <Route
@@ -659,7 +754,12 @@ class WebPlayer extends React.Component {
                     <Route
                         exact
                         path="/library"
-                        render={props => <Library />}
+                        render={props => (
+                            <Library
+                                setQueue={this.setQueue}
+                                playNextInQueue={this.playNextInQueue}
+                            />
+                        )}
                     />
                     <Route
                         path="/album/:id"
@@ -799,6 +899,7 @@ class App extends React.Component {
                                     <WebPlayer
                                         url={props.match.url}
                                         user={this.state.user}
+                                        setUser={this.setUser}
                                     />
                                 )}
                             />

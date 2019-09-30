@@ -638,7 +638,7 @@ api.get('/albums/get', async (request, response) => {
     );
 });
 
-// images
+// misc
 api.get('/image/view/:id', async (request, response) => {
     let DataID;
     try {
@@ -669,6 +669,43 @@ app.get('*', (request, response) => {
         __dirname.substring(0, __dirname.lastIndexOf('/')) +
             '/Client/index.html',
     );
+});
+
+api.get('/library', async (request, response) => {
+    if (!request.session.user) {
+        response.json({msg: 'Not Logged In'});
+        return;
+    }
+    let userPlaylists;
+    try {
+        let userInDb = await db.collection('users').findOne({
+            _id: new ObjectID(request.session.user),
+        });
+        userPlaylists = userInDb.playlists;
+        for (let i in userPlaylists)
+            userPlaylists[i] = new ObjectID(userPlaylists[i]);
+    } catch (err) {
+        response.status(500).end();
+        return;
+    }
+    let playlists = await db
+        .collection('playlists')
+        .find({_id: {$in: userPlaylists}})
+        .toArray();
+    let allSongs = [];
+    for (let i in playlists) {
+        for (let j in playlists[i].songs) {
+            allSongs.push(new ObjectID(playlists[i].songs[j]));
+        }
+    }
+    console.log(allSongs);
+
+    let data = await db
+        .collection('songs')
+        .find({_id: {$in: allSongs}})
+        .toArray();
+
+    response.json(data);
 });
 
 app.listen(8000);
