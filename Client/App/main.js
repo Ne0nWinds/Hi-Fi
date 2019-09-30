@@ -76,7 +76,11 @@ const ContextMenu = props => {
                 <li onClick={props.addToStartOfQueue}>Play Next</li>
                 <li onClick={props.addToEndOfQueue}>Add To Queue</li>
                 <hr />
-                {props.isAlbum ? '' : <li>Go To Album</li>}
+                {props.isAlbum ? (
+                    ''
+                ) : (
+                    <li onClick={props.goToAlbum}>Go To Album</li>
+                )}
                 {props.isAlbum ? (
                     ''
                 ) : (
@@ -127,8 +131,7 @@ const NewPlaylistMenu = props => {
             '/api/playlist/editmeta/' + p._id,
             body,
         );
-        //props.updatePlaylist(response.data);
-        console.log(response);
+        props.updatePlaylist(response.data.value);
         props.hidePlaylistMenu();
     };
     return (
@@ -157,7 +160,7 @@ const NewPlaylistMenu = props => {
                         Choose A Cover Photo <span class="fa">&#xf019;</span>
                     </label>
                     <input type="file" name="file" id="file" />
-                    <button>Create</button>
+                    <button>{p ? 'Save' : 'Create'}</button>
                 </form>
             </div>
         </div>
@@ -326,7 +329,6 @@ class SongSet extends React.Component {
                         <div id="songset-tracklist">
                             {this.state.set.songs.map(s => {
                                 this.count++;
-                                console.log(this.count);
                                 return (
                                     <div
                                         class="song-row"
@@ -568,12 +570,17 @@ class WebPlayer extends React.Component {
     };
 
     removeFromPlaylist = async () => {
+        let url = this.props.url.substring(1).split('/');
         let body = new FormData();
         body.append('songID', this.contextMenuSong._id);
-        body.append('playlistID', this.state.currentSongSet._id);
+        body.append('playlistID', url[1]);
         try {
             let response = await axios.post('/api/playlist/removeSong', body);
         } catch (err) {}
+    };
+
+    goToAlbum = () => {
+        this.setState({redirectToAlbum: this.contextMenuSong.albumID});
     };
 
     // new playlist menu
@@ -604,10 +611,35 @@ class WebPlayer extends React.Component {
         });
     };
 
+    updatePlaylist = updatedPlaylist => {
+        let sidebarPlaylists = [...this.state.playlists];
+        for (let i in sidebarPlaylists) {
+            console.log(sidebarPlaylists[i]._id, updatedPlaylist._id);
+            if (sidebarPlaylists[i]._id == updatedPlaylist._id) {
+                sidebarPlaylists[i].title = updatedPlaylist.title;
+                sidebarPlaylists[i].description = updatedPlaylist.description;
+            }
+        }
+        this.setState({
+            playlists: sidebarPlaylists,
+            redirectToPlaylist: updatedPlaylist._id,
+        });
+    };
+
     render() {
         if (this.state.redirectHome) {
             this.setState({redirectHome: false});
             return <Redirect to="/" />;
+        }
+        if (this.state.redirectToAlbum) {
+            this.setState({redirectToAlbum: null});
+            return <Redirect to={'/album/' + this.state.redirectToAlbum} />;
+        }
+        if (this.state.redirectToPlaylist) {
+            this.setState({redirectToPlaylist: null});
+            return (
+                <Redirect to={'/playlist/' + this.state.redirectToPlaylist} />
+            );
         }
         return (
             <div id="webPlayer" onClick={this.hideContextMenu}>
@@ -666,6 +698,7 @@ class WebPlayer extends React.Component {
                     removeFromPlaylist={this.removeFromPlaylist}
                     addToStartOfQueue={this.addToStartOfQueue}
                     addToEndOfQueue={this.addToEndOfQueue}
+                    goToAlbum={this.goToAlbum}
                 />
                 {this.state.overlayOpen ? (
                     <NewPlaylistMenu
@@ -673,6 +706,7 @@ class WebPlayer extends React.Component {
                         hidePlaylistMenu={this.hidePlaylistMenu}
                         addPlaylist={this.addPlaylist}
                         playlistToEdit={this.state.playlistToEdit}
+                        updatePlaylist={this.updatePlaylist}
                     />
                 ) : (
                     ''
