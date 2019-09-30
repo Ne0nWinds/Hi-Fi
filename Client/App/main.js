@@ -339,6 +339,7 @@ class SongSet extends React.Component {
     };
     playSong = e => {
         e.persist();
+        if (e.target.className == 'song-col song-col-action fa') return;
         let id = e.target.id || e.target.parentElement.id;
         let queue = new Array();
         if (!id) {
@@ -441,6 +442,11 @@ class SongSet extends React.Component {
                                                 : '0'}
                                             {Math.round(s.duration % 60)}
                                         </p>
+                                        <p
+                                            class="song-col song-col-action fa"
+                                            onClick={this.showContextMenu}>
+                                            &#xf142;
+                                        </p>
                                     </div>
                                 );
                             })}
@@ -521,7 +527,7 @@ class WebPlayer extends React.Component {
                 case 'Escape':
                     this.hideContextMenu();
                     this.hidePlaylistMenu();
-                    this.setState({});
+                    this.setState({queueOpen: false});
             }
         });
         this.progress = document.getElementById('progress');
@@ -531,7 +537,6 @@ class WebPlayer extends React.Component {
     showContextMenu = (song, x, y) => {
         let cm = document.getElementById('playlistcontextmenu');
         cm.style.visibility = 'visible';
-        cm.style.position = 'absolute';
 
         if (x + cm.offsetWidth < window.innerWidth) cm.style.left = x + 'px';
         else cm.style.left = x - cm.offsetWidth + 'px';
@@ -545,12 +550,15 @@ class WebPlayer extends React.Component {
         else cm.style.top = y - cm.offsetHeight + 'px';
         this.contextMenuSong = song;
     };
-    hideContextMenu = () => {
-        let cm = document.getElementById('playlistcontextmenu');
-        this.contextMenuSong = null;
-        cm.style.visibility = 'hidden';
-        cm.style.left = '0px';
-        cm.style.top = '0px';
+    hideContextMenu = e => {
+        e.persist();
+        if (e.target.className != 'song-col song-col-action fa') {
+            let cm = document.getElementById('playlistcontextmenu');
+            this.contextMenuSong = null;
+            cm.style.visibility = 'hidden';
+            cm.style.left = '0px';
+            cm.style.top = '0px';
+        }
     };
 
     readDuration = () => {
@@ -720,6 +728,10 @@ class WebPlayer extends React.Component {
         await axios.get('/api/logout');
     };
 
+    toggleQueue = () => {
+        this.setState({queueOpen: !this.state.queueOpen});
+    };
+
     render() {
         if (this.state.redirectHome) {
             this.setState({redirectHome: false});
@@ -815,6 +827,17 @@ class WebPlayer extends React.Component {
                     <span id="progress-container">
                         <div id="progress" />
                     </span>
+                    {this.state.queueOpen ? (
+                        <div>
+                            {this.state.queue.map(s => (
+                                <div>
+                                    {s.title} - {s.artist}
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        ''
+                    )}
                     <div id="left-controls">
                         <img id="left-controls-album-cover" src="" />
                         <div>
@@ -830,7 +853,7 @@ class WebPlayer extends React.Component {
                             onClick={this.handlePausePlay}>
                             &#xf01d;
                         </i>
-                        <i onClick={this.playNextInQueue} class="fa skip">
+                        <i class="fa skip" onClick={this.playNextInQueue}>
                             &#xf050;
                         </i>
                     </div>
@@ -844,7 +867,9 @@ class WebPlayer extends React.Component {
                                 <div id="volume-slider"></div>
                             </div>
                         </div>
-                        <i class="fa">&#xf00b;</i>
+                        <i class="fa" onClick={this.toggleQueue}>
+                            &#xf00b;
+                        </i>
                     </div>
                 </div>
             </div>

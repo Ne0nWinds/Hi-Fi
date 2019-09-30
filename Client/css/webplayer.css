@@ -106,24 +106,36 @@ main {
 .song-row-dark {
     background-color: rgba(0, 0, 0, 0.5) !important;
 }
-.song-row-dark:hover {
+.song-row-dark {
     background-color: rgba(75, 75, 75, 0.5) !important;
 }
 .song-col {
     display: flex;
     align-items: center;
+    margin: auto 5px;
 }
 .song-col-num {
     width: 5%;
+    min-width: 30px;
 }
 .song-col-title {
-    width: 55%;
+    width: 45%;
+    min-width: 150px;
 }
 .song-col-artist {
-    width: 33%;
+    width: 40%;
+    min-width: 135px;
+}
+.song-col-time {
+    width: 10%;
+    min-width: 60px;
 }
 .song-col-action {
-    width: 5%;
+    width: 25px;
+    text-align: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 1.1em;
 }
 #playlistcontextmenu {
     display: block;
