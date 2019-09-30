@@ -34,7 +34,6 @@ mongoClient.connect(
         db = client.db('HiFi');
     },
 );
-const maxFileSize = 1024 * 1024 * 10; // 10MB for photos
 
 // Login/Reg
 api.post(
@@ -129,10 +128,7 @@ api.get('/logout', (request, response) => {
 // creating/managing playlists
 api.post(
     '/playlist/new',
-    multer(
-        {storage: multer.memoryStorage()},
-        {limits: {fileSize: maxFileSize}},
-    ).single(),
+    multer({storage: multer.memoryStorage()}).single('image'),
     async (request, response) => {
         if (!request.session.user) {
             response.json({msg: 'Not Logged In'});
@@ -280,10 +276,7 @@ api.post(
 
 api.post(
     '/playlist/editmeta/:playlistID',
-    multer(
-        {storage: multer.memoryStorage()},
-        {limits: {fileSize: maxFileSize}},
-    ).single(),
+    multer({storage: multer.memoryStorage()}).single('image'),
     async (request, response) => {
         let playlistID;
         let oldPlaylist;

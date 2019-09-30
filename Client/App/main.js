@@ -182,6 +182,12 @@ class SongSet extends React.Component {
         if (albumArt != null)
             albumArt.onload = () => {
                 let avg = getAverageColor(albumArt);
+                if (avg.r > 150 || avg.g > 150 || avg.b > 150) {
+                    let rows = document.getElementsByClassName('song-row');
+                    for (let r of rows) {
+                        r.className += ' song-row-dark';
+                    }
+                }
                 avg = 'rgb(' + avg.r + ',' + avg.g + ',' + avg.b + ')';
                 document.getElementById('songset').style.backgroundImage =
                     'linear-gradient(' + avg + ',#191715)';
@@ -318,12 +324,6 @@ class SongSet extends React.Component {
                             </div>
                         </div>
                         <div id="songset-tracklist">
-                            <div class="song-row" id="song-row-header">
-                                <p class="song-col song-col-num">&#35;</p>
-                                <p class="song-col song-col-title">Title</p>
-                                <p class="song-col song-col-artist">Artist</p>
-                                <p class="song-col song-col-time">Time</p>
-                            </div>
                             {this.state.set.songs.map(s => {
                                 this.count++;
                                 console.log(this.count);
@@ -360,21 +360,6 @@ class SongSet extends React.Component {
                     <main id="songset">
                         <div id="songset-meta">
                             <div id="albumArtPlaceholder" />
-                            <div>
-                                <h1></h1>
-                                <p></p>
-                                <button disabled class="fa">
-                                    &#xf04b;
-                                </button>
-                            </div>
-                        </div>
-                        <div id="songset-tracklist">
-                            <div class="song-row" id="song-row-header">
-                                <p class="song-col song-col-num">&#35;</p>
-                                <p class="song-col song-col-title">Title</p>
-                                <p class="song-col song-col-artist">Artist</p>
-                                <p class="song-col song-col-time">Time</p>
-                            </div>
                         </div>
                     </main>
                 )}

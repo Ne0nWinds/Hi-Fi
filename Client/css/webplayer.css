@@ -58,7 +58,7 @@ main {
     overflow: auto;
     display: flex;
     background-color: #191715;
-    color: white;
+    color: #fff;
 }
 #albumArtPlaceholder {
     height: 320px;
@@ -88,21 +88,26 @@ main {
     text-align: left;
     animation: fadein 700ms;
 }
+.song-row:first-child {
+    margin-top: 5vh;
+}
 .song-row {
     display: flex;
     height: 45px;
-    margin: 25px 25px 25px 0px;
-    padding: 7px 15px;
+    /*    margin: 25px 25px 25px 0px; */
+    margin-right: 3vw;
+    padding: 8px 15px;
+    background-color: rgba(0, 0, 0, 0.15);
 }
 .song-row:hover {
     cursor: pointer;
-    background-color: #fff;
-    color: #191715;
+    background-color: rgba(75, 75, 75, 0.25);
 }
-#song-row-header:hover {
-    cursor: default;
-    background-color: transparent;
-    color: white;
+.song-row-dark {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+}
+.song-row-dark:hover {
+    background-color: rgba(75, 75, 75, 0.5) !important;
 }
 .song-col {
     display: flex;
@@ -119,9 +124,6 @@ main {
 }
 .song-col-action {
     width: 5%;
-}
-.song-col-action {
-    width: 90%;
 }
 #playlistcontextmenu {
     display: block;
