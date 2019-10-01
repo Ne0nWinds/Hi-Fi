@@ -616,13 +616,13 @@ class WebPlayer extends React.Component {
         await this.setState({
             queue: [this.contextMenuSong, ...this.state.queue],
         });
-        if (this.state.queue.length == 1) this.playNextInQueue();
+        if (this.audio.src == '') this.playNextInQueue();
     };
     addToEndOfQueue = async song => {
-        this.setState({
+        await this.setState({
             queue: [...this.state.queue, this.contextMenuSong],
         });
-        if (this.queue.length == 1) this.playNextInQueue();
+        if (this.audio.src == '') this.playNextInQueue();
     };
 
     handlePausePlay = () => {

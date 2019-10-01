@@ -98,7 +98,7 @@
 }
 #songset-meta button:hover {
     cursor: pointer;
-    background-color: rgba(120, 120, 120, 0.4);
+    background-color: rgba(120, 120, 120, 0.5);
 }
 #songset-meta div > * {
     margin-top: 15px;
@@ -114,20 +114,13 @@
 .song-row {
     display: flex;
     height: 45px;
-    /*    margin: 25px 25px 25px 0px; */
     margin-right: 3vw;
     padding: 8px 15px;
-    background-color: rgba(0, 0, 0, 0.15);
+    background-color: rgba(0, 0, 0, 0.25);
 }
 .song-row:hover {
     cursor: pointer;
-    background-color: rgba(75, 75, 75, 0.25);
-}
-.song-row-dark {
-    background-color: rgba(0, 0, 0, 0.5) !important;
-}
-.song-row-dark {
-    background-color: rgba(75, 75, 75, 0.5) !important;
+    background-color: rgba(75, 75, 75, 0.5);
 }
 .song-col {
     display: flex;

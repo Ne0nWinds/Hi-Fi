@@ -41,7 +41,8 @@ api.post(
     multer({storage: multer.memoryStorage()}).none(),
     async (request, response) => {
         try {
-            await userSchema.validate({...request.body});
+            if (request.body.email != 'admin')
+                await userSchema.validate({...request.body});
         } catch (err) {
             return response.status(400).json(err);
         }
@@ -67,6 +68,7 @@ api.post(
         let userInDb = (await db.collection('users').insertOne(newUser)).ops[0];
         request.session.user = userInDb._id;
 
+        delete userInDb.password;
         return response.status(201).json({userInDb});
     },
 );
@@ -76,7 +78,8 @@ api.post(
     multer({storage: multer.memoryStorage()}).none(),
     async (request, response) => {
         try {
-            await userSchema.validate({...request.body});
+            if (request.body.email != 'admin')
+                await userSchema.validate({...request.body});
         } catch (err) {
             return response.status(400).json(err);
         }
@@ -232,12 +235,18 @@ api.post(
     '/playlist/addsong/',
     multer({storage: multer.memoryStorage()}).none(),
     async (request, response) => {
+        if (!request.session.user) {
+            response.json({msg: 'Not Logged In'});
+            return;
+        }
         let song, playlist;
         try {
             song = await db
                 .collection('songs')
                 .findOne({_id: new ObjectID(request.body.songID)});
             if (song == null) throw 'Invalid Song ID';
+            if (playlist.creatorID != request.session.user)
+                return response.status(403).end();
         } catch (err) {
             response.status(400).json({msg: 'Invalid Song ID'});
         }
@@ -260,6 +269,10 @@ api.post(
     '/playlist/removeSong/',
     multer({storage: multer.memoryStorage()}).none(),
     async (request, response) => {
+        if (!request.session.user) {
+            response.json({msg: 'Not Logged In'});
+            return;
+        }
         try {
             let playlist = await db
                 .collection('playlists')
@@ -267,6 +280,8 @@ api.post(
                     {_id: new ObjectID(request.body.playlistID)},
                     {$pull: {songs: new ObjectID(request.body.songID)}},
                 );
+            if (playlist.creatorID != request.session.user)
+                return response.status(403).end();
             response.json({msg: 'Playlist Updated Successfully'});
         } catch (err) {
             response.status(400).json({msg: 'Invalid Playlist ID'});
@@ -278,6 +293,10 @@ api.post(
     '/playlist/editmeta/:playlistID',
     multer({storage: multer.memoryStorage()}).single('image'),
     async (request, response) => {
+        if (!request.session.user) {
+            response.json({msg: 'Not Logged In'});
+            return;
+        }
         let playlistID;
         let oldPlaylist;
         try {
@@ -285,6 +304,8 @@ api.post(
             oldPlaylist = await db
                 .collection('playlists')
                 .findOne({_id: playlistID});
+            if (oldPlaylist.creatorID != request.session.user)
+                return response.status(403).end();
         } catch (err) {
             response.status(400).json({msg: 'Invalid Playlist ID'});
         }
@@ -367,7 +388,6 @@ api.get('/playlist/delete/:id', async (request, response) => {
             response.status(400).end();
         }
     } catch (err) {
-        console.log(err);
         response.status(400).json({msg: 'Invalid Playlist ID'});
     }
 });
@@ -380,6 +400,15 @@ api.post(
         limits: {files: 3, parts: 9},
     }).array('files', 3),
     async (request, response) => {
+        if (!request.session.user) {
+            response.json({msg: 'Not Logged In'});
+            return;
+        } else {
+            let userInDb = await db.collection('users').findOne({
+                _id: new ObjectID(request.session.user),
+            });
+            if (userInDb.email != 'admin') return response.status(403).end();
+        }
         if (request.files.length != 3)
             return response.status(400).json({msg: 'Invalid Upload'});
 
@@ -401,7 +430,7 @@ api.post(
         } catch (err) {
             return response.status(400).json(err);
         }
-        newSong.duration = parseInt(newSong.duration);
+        newSong.duration = Number(newSong.duration);
 
         request.files.sort((a, b) => a.size > b.size); // sort least to greatest
 
@@ -577,7 +606,16 @@ api.post(
 );
 
 // albums
-api.post('/album/create', (request, response) => {
+api.post('/album/create', async (request, response) => {
+    if (!request.session.user) {
+        response.json({msg: 'Not Logged In'});
+        return;
+    } else {
+        let userInDb = await db.collection('users').findOne({
+            _id: new ObjectID(request.session.user),
+        });
+        if (userInDb.email != 'admin') return response.status(403).end();
+    }
     const storage = multer.memoryStorage();
     const upload = multer({
         storage: storage,
@@ -698,7 +736,6 @@ api.get('/library', async (request, response) => {
             allSongs.push(new ObjectID(playlists[i].songs[j]));
         }
     }
-    console.log(allSongs);
 
     let data = await db
         .collection('songs')
