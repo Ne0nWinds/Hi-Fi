@@ -841,14 +841,15 @@ class WebPlayer extends React.Component {
                     <span id="progress-container">
                         <div id="progress" />
                     </span>
-                    {this.state.queueOpen ? (
-                        <div>
+                    {this.state.queueOpen && this.state.queue.length > 0 ? (
+                        <aside id="queueMenu">
                             {this.state.queue.map(s => (
                                 <div>
-                                    {s.title} - {s.artist}
+                                    <p class="queue-title">{s.title}</p>
+                                    <p class="queue-artist">{s.artist}</p>
                                 </div>
                             ))}
-                        </div>
+                        </aside>
                     ) : (
                         ''
                     )}

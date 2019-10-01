@@ -1,6 +1,3 @@
-:root {
-    --player-height: 75px;
-}
 #webPlayer {
     display: grid;
     width: 100vw;
@@ -184,6 +181,24 @@
 #controls > div {
     width: 33.33%;
     max-width: 385px;
+}
+#queueMenu {
+    position: absolute;
+    right: 15px;
+    max-height: 50vh;
+    bottom: 84px;
+    padding: 7px 15px;
+    background-color: #fff;
+    overflow: auto;
+}
+#queueMenu > div {
+    margin: 8px 0;
+}
+.queue-title {
+    font-weight: bold;
+}
+.queue-artist {
+    font-size: 0.95em;
 }
 #progress-container {
     display: block;
