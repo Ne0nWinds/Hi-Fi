@@ -69,7 +69,7 @@ api.post(
         request.session.user = userInDb._id;
 
         delete userInDb.password;
-        return response.status(201).json({userInDb});
+        return response.status(201).json(userInDb);
     },
 );
 
@@ -248,7 +248,7 @@ api.post(
             if (playlist.creatorID != request.session.user)
                 return response.status(403).end();
         } catch (err) {
-            response.status(400).json({msg: 'Invalid Song ID'});
+            return response.status(400).json({msg: 'Invalid Song ID'});
         }
 
         try {

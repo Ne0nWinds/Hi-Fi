@@ -566,7 +566,7 @@ class WebPlayer extends React.Component {
     };
 
     readDuration = () => {
-        if (!this.progress) progress = document.getElementById('progress');
+        if (!this.progress) this.progress = document.getElementById('progress');
         let percent = (
             (this.audio.currentTime / this.audio.duration) *
             100
@@ -582,6 +582,10 @@ class WebPlayer extends React.Component {
     setQueue = async (queue = []) => {
         await this.setState({queue});
         this.playNextInQueue();
+    };
+    playerBack = () => {
+        this.audio.currentTime = 0;
+        this.progress.style.width = '0%';
     };
     playNextInQueue = () => {
         const pauseplaybtn = document.getElementById('pause-play');
@@ -728,6 +732,10 @@ class WebPlayer extends React.Component {
     };
 
     logout = async () => {
+        if (this.player.isReady) {
+            this.audio.pause();
+            this.player.reset();
+        }
         this.props.setUser(null);
         await axios.get('/api/logout');
     };
@@ -852,7 +860,9 @@ class WebPlayer extends React.Component {
                         </div>
                     </div>
                     <div id="main-controls">
-                        <i class="fa skip">&#xf049;</i>
+                        <i class="fa skip" onClick={this.playerBack}>
+                            &#xf049;
+                        </i>
                         <i
                             class="fa"
                             id="pause-play"
