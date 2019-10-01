@@ -47,10 +47,9 @@ class Sidebar extends React.Component {
             <nav id="sidebar">
                 <ul>
                     <li id="accountControl" onClick={this.toggleAccountMenu}>
-                        <img
-                            src="/img/user-circle-solid.svg"
-                            alt="Profile Picture"
-                        />
+                        <p class="fa" id="user-pic">
+                            &#xf2bd;
+                        </p>
                         <p>{props.email.replace(/@.*/, '')}</p>
                     </li>
                     {this.state.accountMenu ? (
@@ -61,14 +60,20 @@ class Sidebar extends React.Component {
                 </ul>
                 <ul>
                     <Link to="/">
-                        <li>Home</li>
+                        <li>
+                            <span class="fa">&#xf015;</span>Home
+                        </li>
                     </Link>
                     <Link to="/library">
-                        <li>Library</li>
+                        <li>
+                            <span class="fa">&#xf001;</span>Library
+                        </li>
                     </Link>
                 </ul>
                 <ul>
-                    <li onClick={props.showPlaylistMenu}>New Playlist</li>
+                    <li onClick={props.showPlaylistMenu}>
+                        <span class="fa">&#xf055;</span>New Playlist
+                    </li>
                     {props.playlists.map(p => (
                         <Link to={'/playlist/' + p._id}>
                             <li to={'/playlist/' + p._id}>{p.title}</li>
@@ -125,13 +130,17 @@ class Library extends React.Component {
     }
     render() {
         if (!this.state.loaded) {
-            return <div />;
+            return <main />;
         } else if (this.state.songs.length == 0) {
-            return <div>You haven't added any songs to a playlist, yet.</div>;
+            return (
+                <main id="library">
+                    You haven't added any songs to a playlist, yet.
+                </main>
+            );
         } else {
             this.count = 0;
             return (
-                <div>
+                <main id="library">
                     {this.state.songs.map(s => {
                         this.count++;
                         console.log(s);
@@ -156,7 +165,7 @@ class Library extends React.Component {
                             </div>
                         );
                     })}
-                </div>
+                </main>
             );
         }
     }
@@ -289,11 +298,11 @@ class SongSet extends React.Component {
                 }
                 avg = 'rgb(' + avg.r + ',' + avg.g + ',' + avg.b + ')';
                 document.getElementById('songset').style.backgroundImage =
-                    'linear-gradient(' + avg + ',#191715)';
+                    'linear-gradient(' + avg + ',#111)';
             };
         else
             document.getElementById('songset').style.backgroundImage =
-                'linear-gradient(#252525,#191715)';
+                'linear-gradient(#252525,#111)';
     }
     componentWillReceiveProps(newProps) {
         if (newProps.url[1] != this.props.url[1]) {
@@ -362,105 +371,100 @@ class SongSet extends React.Component {
     };
     render() {
         this.count = 0;
-        return (
-            <div>
-                {this.state.loaded ? (
-                    <main id="songset">
-                        <div id="songset-meta">
-                            {this.state.set.artID != '' ? (
-                                <img
-                                    id="albumArt"
-                                    src={
-                                        '/api/image/view/' +
-                                        this.state.set.artID
-                                    }
-                                    alt="Album Cover"
-                                />
-                            ) : (
-                                <div id="songset-img-placeholder">
-                                    No{' '}
-                                    {this.state.set.isAlbum
-                                        ? 'Album Cover'
-                                        : 'Playlist Photo'}{' '}
-                                    Available
-                                </div>
-                            )}
-                            <div>
-                                <h1>{this.state.set.title}</h1>
-                                <p>
-                                    {this.state.set.description != undefined
-                                        ? this.state.set.description
-                                        : 'No description'}
-                                </p>
-                                <button onClick={this.playSong} class="fa">
-                                    &#xf04b;
-                                </button>
-                                {this.state.isOwner ? (
-                                    <button
-                                        class="fa"
-                                        onClick={this.editPlaylist}>
-                                        &#xf044;
-                                    </button>
-                                ) : (
-                                    ''
-                                )}
-                                {this.state.isOwner ? (
-                                    <button
-                                        onClick={this.deletePlaylist}
-                                        class="fa">
-                                        &#xf00d;
-                                    </button>
-                                ) : (
-                                    ''
-                                )}
+        if (this.state.loaded) {
+            return (
+                <main id="songset">
+                    <div id="songset-meta">
+                        {this.state.set.artID != '' ? (
+                            <img
+                                id="albumArt"
+                                src={'/api/image/view/' + this.state.set.artID}
+                                alt="Album Cover"
+                            />
+                        ) : (
+                            <div id="songset-img-placeholder">
+                                No{' '}
+                                {this.state.set.isAlbum
+                                    ? 'Album Cover'
+                                    : 'Playlist Photo'}{' '}
+                                Available
                             </div>
+                        )}
+                        <div>
+                            <h1>{this.state.set.title}</h1>
+                            <p>
+                                {this.state.set.description != undefined
+                                    ? this.state.set.description
+                                    : 'No description'}
+                            </p>
+                            <button onClick={this.playSong} class="fa">
+                                &#xf04b;
+                            </button>
+                            {this.state.isOwner ? (
+                                <button class="fa" onClick={this.editPlaylist}>
+                                    &#xf044;
+                                </button>
+                            ) : (
+                                ''
+                            )}
+                            {this.state.isOwner ? (
+                                <button
+                                    onClick={this.deletePlaylist}
+                                    class="fa">
+                                    &#xf00d;
+                                </button>
+                            ) : (
+                                ''
+                            )}
                         </div>
-                        <div id="songset-tracklist">
-                            {this.state.set.songs.map(s => {
-                                this.count++;
-                                return (
-                                    <div
-                                        class="song-row"
-                                        id={s._id}
-                                        onClick={this.playSong}
-                                        onContextMenu={this.showContextMenu}>
-                                        <p class="song-col song-col-num">
-                                            {this.state.set.isAlbum
-                                                ? s.trackNumber
-                                                : this.count}
-                                        </p>
-                                        <p class="song-col song-col-title">
-                                            {s.title}
-                                        </p>
-                                        <p class="song-col song-col-artist">
-                                            {s.artist}
-                                        </p>
-                                        <p class="song-col song-col-time">
-                                            {Math.floor(s.duration / 60)}:
-                                            {Math.round(s.duration % 60) > 9
-                                                ? ''
-                                                : '0'}
-                                            {Math.round(s.duration % 60)}
-                                        </p>
-                                        <p
-                                            class="song-col song-col-action fa"
-                                            onClick={this.showContextMenu}>
-                                            &#xf142;
-                                        </p>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </main>
-                ) : (
-                    <main id="songset">
-                        <div id="songset-meta">
-                            <div id="albumArtPlaceholder" />
-                        </div>
-                    </main>
-                )}
-            </div>
-        );
+                    </div>
+                    <div id="songset-tracklist">
+                        {this.state.set.songs.map(s => {
+                            this.count++;
+                            return (
+                                <div
+                                    class="song-row"
+                                    id={s._id}
+                                    onClick={this.playSong}
+                                    onContextMenu={this.showContextMenu}>
+                                    <p class="song-col song-col-num">
+                                        {this.state.set.isAlbum
+                                            ? s.trackNumber
+                                            : this.count}
+                                    </p>
+                                    <p class="song-col song-col-title">
+                                        {s.title}
+                                    </p>
+                                    <p class="song-col song-col-artist">
+                                        {s.artist}
+                                    </p>
+                                    <p class="song-col song-col-time">
+                                        {Math.floor(s.duration / 60)}:
+                                        {Math.round(s.duration % 60) > 9
+                                            ? ''
+                                            : '0'}
+                                        {Math.round(s.duration % 60)}
+                                    </p>
+                                    <p
+                                        class="song-col song-col-action fa"
+                                        onClick={this.showContextMenu}>
+                                        &#xf142;
+                                    </p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </main>
+            );
+        } else {
+            return (
+                <main id="songset">
+                    <div id="songset-meta">
+                        <div id="albumArtPlaceholder" />
+                    </div>
+                </main>
+            );
+        }
     }
 }
 
@@ -804,7 +808,9 @@ class WebPlayer extends React.Component {
                     />
                 </Switch>
                 <ContextMenu
-                    isAlbum={this.props.url[0] == 'album'}
+                    isAlbum={
+                        this.props.url.substring(1).split('/')[0] == 'album'
+                    }
                     playlists={this.state.playlists}
                     addToPlaylist={this.addToPlaylist}
                     removeFromPlaylist={this.removeFromPlaylist}
