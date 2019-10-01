@@ -45,6 +45,7 @@
     opacity: 0.9;
 }
 #home {
+    overflow: auto;
     display: flex;
     flex-wrap: wrap;
     justify-content: space-around;
@@ -218,6 +219,9 @@
 }
 #left-controls img {
     height: 100%;
+}
+#left-controls img[src=''] {
+    margin-right: 75px;
 }
 #left-controls > div {
     margin-left: 10px;

@@ -555,8 +555,8 @@ class WebPlayer extends React.Component {
         this.contextMenuSong = song;
     };
     hideContextMenu = e => {
-        e.persist();
-        if (e.target.className != 'song-col song-col-action fa') {
+        if (e) e.persist();
+        if (!e || e.target.className != 'song-col song-col-action fa') {
             let cm = document.getElementById('playlistcontextmenu');
             this.contextMenuSong = null;
             cm.style.visibility = 'hidden';
