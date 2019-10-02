@@ -364,6 +364,10 @@
     max-width: 1080px;
     background-color: rgba(255, 255, 255, 0.75);
 }
+#library-placeholder {
+    justify-content: center;
+    align-items: center;
+}
 @media only screen and (max-width: 1280px) {
     #songset {
         flex-direction: column;
@@ -377,6 +381,7 @@
         width: 335px;
         height: 335px;
         background-color: #333;
+        margin: auto auto;
     }
     #albumArt {
         width: 335px;

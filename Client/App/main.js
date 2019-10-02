@@ -134,7 +134,10 @@ class Library extends React.Component {
         } else if (this.state.songs.length == 0) {
             return (
                 <main id="library">
-                    You haven't added any songs to a playlist, yet.
+                    <div class="song-row" id="library-placeholder">
+                        Songs added to your playlists will automatically show up
+                        here
+                    </div>
                 </main>
             );
         } else {
