@@ -176,6 +176,7 @@ class Library extends React.Component {
 
 const ContextMenu = props => {
     let addToPlaylist = e => {
+        console.log(e.target.id);
         props.addToPlaylist(e.target.id);
     };
     return (
@@ -558,7 +559,7 @@ class WebPlayer extends React.Component {
         this.contextMenuSong = song;
     };
     hideContextMenu = e => {
-        if (e) e.persist();
+        if (e.persist) e.persist();
         if (!e || e.target.className != 'song-col song-col-action fa') {
             let cm = document.getElementById('playlistcontextmenu');
             this.contextMenuSong = null;

@@ -245,8 +245,6 @@ api.post(
                 .collection('songs')
                 .findOne({_id: new ObjectID(request.body.songID)});
             if (song == null) throw 'Invalid Song ID';
-            if (playlist.creatorID != request.session.user)
-                return response.status(403).end();
         } catch (err) {
             return response.status(400).json({msg: 'Invalid Song ID'});
         }
@@ -259,6 +257,8 @@ api.post(
                     {$push: {songs: new ObjectID(request.body.songID)}},
                 );
             response.json({msg: 'Playlist Updated Successfully'});
+            if (playlist.creatorID != request.session.user)
+                return response.status(403).end();
         } catch (err) {
             response.status(400).json({msg: 'Invalid Playlist ID'});
         }

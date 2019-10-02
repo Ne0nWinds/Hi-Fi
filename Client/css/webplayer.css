@@ -390,8 +390,7 @@
         animation: fadein 750ms;
     }
     #songset-img-placeholder {
-        width: 335px;
-        height: 335px;
+        margin: auto;
     }
     #songset-tracklist {
         margin: 0px auto;
