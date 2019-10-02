@@ -4,7 +4,7 @@ const songSchema = joi.object({
     title: joi
         .string()
         .min(2)
-        .max(32)
+        .max(64)
         .regex(/\w+/)
         .required(),
     artist: joi
